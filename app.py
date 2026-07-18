@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 
 st.set_page_config(
     page_title="PSDT - Perceptual Synchronization Digital Twin",
@@ -6,115 +7,39 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown("""
-<style>
-.stApp {
-    background-color: #ffffff;
-}
-h1, h2, h3 {
-    color: #0a2540;
-}
-.psdt-architecture-card {
-    background-color: #f5f6f8;
-    border-radius: 18px;
-    padding: 4rem 2rem;
-    text-align: center;
-    margin-bottom: 2rem;
-}
-.psdt-status-card {
-    background-color: #f5f6f8;
-    border-radius: 14px;
-    padding: 1.5rem;
-    text-align: center;
-}
-.psdt-status-label {
-    color: #0a2540;
-    font-weight: 600;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-.psdt-status-value {
-    color: #333333;
-    font-size: 1.15rem;
-    margin-top: 0.4rem;
-}
-</style>
-""", unsafe_allow_html=True)
 
-with st.sidebar:
-    st.markdown("### Navigation")
-    st.radio(
-        "Navigation",
-        ["Home", "Patent Architecture", "Simulation", "Results", "About"],
-        label_visibility="collapsed",
-    )
+def load_css():
+    css_path = Path(__file__).parent / "styles" / "style.css"
+    if css_path.exists():
+        st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <div style="text-align:center; padding-top: 1rem;">
-        <div style="font-size:3.2rem; font-weight:800; color:#0a2540; letter-spacing:0.05em;">PSDT</div>
-        <div style="font-size:1.6rem; font-weight:600; color:#0a2540; margin-top:0.3rem;">
-            Perceptual Synchronization Digital Twin
-        </div>
-        <div style="font-size:1.05rem; color:#5a6472; margin-top:0.5rem;">
-            Digital Twin Platform for Adaptive Synchronization in Distributed Wearable Haptic Systems
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
-st.markdown("<br>", unsafe_allow_html=True)
+load_css()
 
-st.info(
-    "The PSDT platform provides a browser-based digital twin for demonstrating the patented "
-    "Perceptual Synchronization Margin (PSM)-based adaptive synchronization framework. It models "
-    "distributed wearable haptic nodes, synchronization behavior, perceptual threshold estimation, "
-    "synchronization state transitions, adaptive resource allocation, and communication overhead in "
-    "a configurable virtual environment."
-)
+home_page = st.Page("pages/home.py", title="Home", icon="🏠", default=True)
+architecture_page = st.Page("pages/architecture.py", title="Patent Architecture", icon="🏗")
+simulation_page = st.Page("pages/simulation.py", title="Simulation", icon="🧠")
+analytics_page = st.Page("pages/analytics.py", title="Analytics", icon="📊")
+comparison_page = st.Page("pages/comparison.py", title="Comparison", icon="⚖")
+about_page = st.Page("pages/about.py", title="About", icon="ℹ")
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-st.markdown(
-    """
-    <div class="psdt-architecture-card">
-        <div style="font-size:1.3rem; font-weight:700; color:#0a2540;">Figure 2</div>
-        <div style="font-size:1.1rem; color:#333333; margin-top:0.3rem;">Overall Patent Architecture</div>
-        <div style="font-size:1rem; color:#9aa3ad; margin-top:1.5rem;">(To be added)</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.button("Start Simulation", use_container_width=True)
-with col2:
-    st.button("View Patent Architecture", use_container_width=True)
-with col3:
-    st.button("About PSDT", use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-c1, c2, c3, c4 = st.columns(4)
-
-status_items = [
-    ("TRL", "2"),
-    ("Patent", "Verified Architecture"),
-    ("Version", "1.0"),
-    ("Platform", "Browser-Based"),
+pages = [
+    home_page,
+    architecture_page,
+    simulation_page,
+    analytics_page,
+    comparison_page,
+    about_page,
 ]
 
-for col, (label, value) in zip([c1, c2, c3, c4], status_items):
-    with col:
-        st.markdown(
-            f"""
-            <div class="psdt-status-card">
-                <div class="psdt-status-label">{label}</div>
-                <div class="psdt-status-value">{value}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+nav = st.navigation(pages, position="hidden")
+
+with st.sidebar:
+    st.markdown('<div class="psdt-sidebar-title">🧠 PSDT</div>', unsafe_allow_html=True)
+    st.markdown("<hr style='margin:0.4rem 0 1rem 0;'>", unsafe_allow_html=True)
+    for p in pages:
+        st.page_link(p, label=f"{p.icon}  {p.title}", use_container_width=True)
+    st.markdown("<hr style='margin:1.5rem 0 0.6rem 0;'>", unsafe_allow_html=True)
+    st.markdown('<div class="psdt-sidebar-version">Version 1.0</div>', unsafe_allow_html=True)
+
+nav.run()

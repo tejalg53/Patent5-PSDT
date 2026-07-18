@@ -1,0 +1,161 @@
+.stApp {
+    background-color: #F8FAFC;
+}
+
+h1, h2, h3, h4 {
+    color: #0B3D91;
+    font-weight: 700;
+}
+
+p, span, div, label {
+    font-weight: 500;
+}
+
+.psdt-card {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.psdt-hero-card {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.psdt-nav-card {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 0.8rem;
+}
+
+.psdt-nav-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(11,61,145,0.15);
+}
+
+.psdt-stat-card {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.psdt-stat-label {
+    color: #0B3D91;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.psdt-stat-value {
+    color: #333333;
+    font-size: 1.2rem;
+    margin-top: 0.4rem;
+    font-weight: 500;
+}
+
+div.stButton > button {
+    background-color: #1976D2;
+    color: #ffffff;
+    border-radius: 999px;
+    border: none;
+    padding: 0.6rem 1.4rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+div.stButton > button:hover {
+    background-color: #0B3D91;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(11,61,145,0.25);
+}
+
+div.stButton > button:disabled {
+    background-color: #CBD5E1;
+    color: #64748B;
+}
+
+.psdt-module-card {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 1.2rem;
+    text-align: center;
+    font-weight: 700;
+    color: #0B3D91;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 0.6rem;
+}
+
+.psdt-module-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(11,61,145,0.15);
+}
+
+.psdt-module-card-selected {
+    background-color: #0B3D91;
+    color: #FFFFFF;
+}
+
+.psdt-placeholder-box {
+    background-color: #FFFFFF;
+    border: 2px dashed #CBD5E1;
+    border-radius: 15px;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #94A3B8;
+    font-weight: 500;
+}
+
+.psdt-placeholder-box-lg {
+    background-color: #FFFFFF;
+    border: 2px dashed #CBD5E1;
+    border-radius: 15px;
+    padding: 6rem 1rem;
+    text-align: center;
+    color: #94A3B8;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.psdt-sidebar-title {
+    color: #0B3D91;
+    font-weight: 800;
+    font-size: 1.4rem;
+    padding: 0.5rem 0 0.5rem 0;
+}
+
+.psdt-sidebar-version {
+    color: #94A3B8;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+.psdt-comparison-panel {
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    min-height: 260px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.psdt-section-heading {
+    color: #0B3D91;
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
