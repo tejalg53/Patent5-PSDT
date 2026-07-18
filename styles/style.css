@@ -160,3 +160,22 @@ div.stButton > button:disabled {
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
 }
+
+.psdt-zone-label {
+    text-align: center;
+    font-weight: 700;
+    color: #0B3D91;
+    font-size: 1.0rem;
+    letter-spacing: 1px;
+    margin-top: 0.9rem;
+}
+
+.psdt-zone-dots {
+    text-align: center;
+    color: #94A3B8;
+    font-size: 1.3rem;
+    line-height: 1.6;
+    letter-spacing: 6px;
+    word-spacing: 6px;
+    margin-bottom: 0.2rem;
+}
