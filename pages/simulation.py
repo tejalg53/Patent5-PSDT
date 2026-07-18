@@ -4,6 +4,7 @@ import pandas as pd
 from core.constants import NODE_COUNT_OPTIONS, ZONE_ORDER
 from core.node_factory import generate_nodes
 from core.coordinator import CentralSynchronizationCoordinator, PIPELINE_STAGES
+from core.threshold_profiles import CALIBRATION_FACTORS, MOTION_FACTORS, ENVIRONMENT_FACTORS, CUSTOM_CALIBRATION_BOUNDS
 
 st.title("Simulation")
 
@@ -114,7 +115,7 @@ else:
                 <p style="margin:0 0 0.4rem 0;"><b>Actuator Driver Delay</b><br>{selected_node.actuator_driver_delay} ms</p>
                 <p style="margin:0 0 0.8rem 0;"><b>Mechanical Delay</b><br>{selected_node.mechanical_startup_delay} ms</p>
                 <hr style="margin:0.6rem 0;">
-                <p style="margin:0 0 0.4rem 0;"><b>PT</b><br>{fmt(selected_node.perceptual_threshold)}</p>
+                <p style="margin:0 0 0.4rem 0;"><b>PT (Dynamic)</b><br>{fmt(round(selected_node.perceptual_threshold, 2) if selected_node.perceptual_threshold is not None else None, " ms")}</p>
                 <p style="margin:0 0 0.4rem 0;"><b>PE</b><br>{fmt(selected_node.perceived_error)}</p>
                 <p style="margin:0 0 0.4rem 0;"><b>PSM</b><br>{fmt(selected_node.psm)}</p>
                 <p style="margin:0;"><b>State</b><br>{selected_node.sync_state}</p>
@@ -122,6 +123,38 @@ else:
             """,
             unsafe_allow_html=True,
         )
+
+        st.markdown("##### Dynamic Threshold Characterization")
+        audit = coordinator.dtce_audit.get(selected_id) if coordinator else None
+        if audit:
+            st.markdown(
+                f"""
+                <div class="psdt-card">
+                <p style="margin:0 0 0.3rem 0;">Body Zone: <b>{audit.body_zone}</b></p>
+                <p style="margin:0 0 0.3rem 0;">Baseline PT: <b>{audit.base_pt_ms:.2f} ms</b></p>
+                <p style="margin:0 0 0.3rem 0;">Frequency: <b>{audit.frequency_hz:.0f} Hz</b>
+                &nbsp;&nbsp; Frequency Factor: <b>x{audit.frequency_factor:.2f}</b></p>
+                <p style="margin:0 0 0.3rem 0;">Actuator: <b>{audit.actuator_type}</b>
+                &nbsp;&nbsp; Actuator Factor: <b>x{audit.actuator_factor:.2f}</b></p>
+                <p style="margin:0 0 0.3rem 0;">Calibration: <b>{audit.calibration_profile}</b>
+                &nbsp;&nbsp; Calibration Factor: <b>x{audit.calibration_factor:.2f}</b></p>
+                <p style="margin:0 0 0.3rem 0;">Motion: <b>{audit.motion_state}</b>
+                &nbsp;&nbsp; Motion Factor: <b>x{audit.motion_factor:.2f}</b></p>
+                <p style="margin:0 0 0.6rem 0;">Environment: <b>{audit.environment_state}</b>
+                &nbsp;&nbsp; Environment Factor: <b>x{audit.environment_factor:.2f}</b></p>
+                <hr style="margin:0.6rem 0;">
+                <p style="margin:0; font-weight:600;">Dynamic Perceptual Threshold PTz(t):
+                {audit.dynamic_pt_ms:.2f} ms</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="psdt-placeholder-box">Run a communication cycle to compute '
+                'this node&#39;s Dynamic Perceptual Threshold.</div>',
+                unsafe_allow_html=True,
+            )
 
     with table_col:
         st.subheader("Node Table")
@@ -145,6 +178,34 @@ else:
 
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
+    # -----------------------------------------------------------------
+    # DTCE audit table
+    # -----------------------------------------------------------------
+    st.subheader("DTCE Audit Table")
+    if coordinator and coordinator.dtce_audit:
+        audit_rows = [
+            {
+                "Node": nid,
+                "Zone": a.body_zone,
+                "Base PT (ms)": round(a.base_pt_ms, 2),
+                "Freq Factor": a.frequency_factor,
+                "Actuator Factor": a.actuator_factor,
+                "UCF": a.calibration_factor,
+                "Motion": a.motion_state,
+                "Motion Factor": a.motion_factor,
+                "Environment": a.environment_state,
+                "Env Factor": a.environment_factor,
+                "Dynamic PT (ms)": round(a.dynamic_pt_ms, 2),
+            }
+            for nid, a in coordinator.dtce_audit.items()
+        ]
+        st.dataframe(pd.DataFrame(audit_rows), hide_index=True, use_container_width=True)
+    else:
+        st.markdown(
+            '<div class="psdt-placeholder-box">Run a communication cycle to populate the DTCE audit table.</div>',
+            unsafe_allow_html=True,
+        )
+
     # -------------------------------------------------------------
     # Central Synchronization Coordinator
     # -------------------------------------------------------------
@@ -156,6 +217,39 @@ else:
     metric_cols[1].metric("PSSPs Received", counts["received"])
     metric_cols[2].metric("Valid Packets", counts["valid"])
     metric_cols[3].metric("PRAPs Generated", coordinator.prap_generated)
+
+    st.markdown("###### Perceptual Context")
+    ctx_cols = st.columns(4)
+    with ctx_cols[0]:
+        calibration_profile = st.selectbox(
+            "User Profile", list(CALIBRATION_FACTORS.keys()) + ["Custom"], key="dtce_calibration_profile"
+        )
+    with ctx_cols[1]:
+        custom_calibration_factor = None
+        if calibration_profile == "Custom":
+            lo, hi = CUSTOM_CALIBRATION_BOUNDS
+            custom_calibration_factor = st.slider(
+                "Custom UCF", min_value=lo, max_value=hi, value=1.0, step=0.01, key="dtce_custom_ucf"
+            )
+        else:
+            st.caption(f"UCF = x{CALIBRATION_FACTORS[calibration_profile]:.2f}")
+    with ctx_cols[2]:
+        motion_state = st.selectbox("Motion State", list(MOTION_FACTORS.keys()), key="dtce_motion_state")
+    with ctx_cols[3]:
+        environment_state = st.selectbox(
+            "Environment", list(ENVIRONMENT_FACTORS.keys()), key="dtce_environment_state"
+        )
+
+    recalculate = st.button("Recalculate Thresholds", use_container_width=True)
+    if recalculate:
+        coordinator.set_perceptual_context(
+            calibration_profile=calibration_profile,
+            custom_calibration_factor=custom_calibration_factor,
+            motion_state=motion_state,
+            environment_state=environment_state,
+        )
+        coordinator.run_dtce_pass()
+        st.rerun()
 
     run_cycle = st.button("Run Communication Cycle", use_container_width=True)
     if run_cycle:

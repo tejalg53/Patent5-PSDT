@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from .packets import PSSP, PRAP
+from .dtce import DynamicThresholdCharacterizationEngine, DTCEAudit
 
 PIPELINE_STAGES = [
     ("DTCE", "Sprint 5"),
@@ -47,6 +48,15 @@ class CentralSynchronizationCoordinator:
         self.packet_history: Dict[str, PSSP] = {}
         self.latest_praps: Dict[str, PRAP] = {}
         self.log: List[CommunicationLogEntry] = []
+
+        self.dtce = DynamicThresholdCharacterizationEngine()
+        self.dtce_audit: Dict[str, DTCEAudit] = {}
+        self.perceptual_context = {
+            "calibration_profile": "Standard",
+            "custom_calibration_factor": None,
+            "motion_state": "Stationary",
+            "environment_state": "Normal",
+        }
 
         self.packets_generated = 0
         self.packets_received = 0
@@ -138,6 +148,7 @@ class CentralSynchronizationCoordinator:
             entries.append(entry)
 
         self._generate_baseline_praps(simulation_timestamp)
+        self.run_dtce_pass()
 
         return entries
 
@@ -152,6 +163,39 @@ class CentralSynchronizationCoordinator:
             )
             self.latest_praps[node_id] = prap
             self.prap_generated += 1
+
+    def set_perceptual_context(self, calibration_profile=None, custom_calibration_factor=None,
+                                motion_state=None, environment_state=None):
+        """Update the shared Perceptual Context used by DTCE for every node."""
+        if calibration_profile is not None:
+            self.perceptual_context["calibration_profile"] = calibration_profile
+        if custom_calibration_factor is not None:
+            self.perceptual_context["custom_calibration_factor"] = custom_calibration_factor
+        if motion_state is not None:
+            self.perceptual_context["motion_state"] = motion_state
+        if environment_state is not None:
+            self.perceptual_context["environment_state"] = environment_state
+
+    def run_dtce_pass(self):
+        """Run the Dynamic Threshold Characterization Engine for every
+        registered node using the current Perceptual Context. Stores a full
+        audit trail per node and writes PTz(t) back onto the node itself.
+        Returns the dtce_audit dict (node_id -> DTCEAudit).
+        """
+        ctx = self.perceptual_context
+        for node_id, node in self.registry.items():
+            audit = self.dtce.compute_threshold(
+                body_zone=node.body_zone,
+                frequency_hz=node.vibration_frequency,
+                actuator_type=node.actuator_type,
+                calibration_profile=ctx["calibration_profile"],
+                custom_calibration_factor=ctx["custom_calibration_factor"],
+                motion_state=ctx["motion_state"],
+                environment_state=ctx["environment_state"],
+            )
+            self.dtce_audit[node_id] = audit
+            node.perceptual_threshold = audit.dynamic_pt_ms
+        return self.dtce_audit
 
     def get_packet_counts(self):
         return {
