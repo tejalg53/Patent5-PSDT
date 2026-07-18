@@ -1,0 +1,162 @@
+"""
+Sprint 4 - Central Synchronization Coordinator.
+
+Responsible for:
+  - registering wearable nodes into a registry indexed by Node ID and zone
+  - requesting/receiving node synchronization status (PSSP)
+  - validating incoming status packets
+  - storing the latest status of every node
+  - maintaining packet/event counters
+  - preparing (placeholder, non-adaptive) resource-allocation commands (PRAP)
+  - logging synchronization communication
+
+The DTCE / PEEE / PSME / SCE / ARAC engines are represented here only as
+named placeholders in the processing pipeline. They are implemented in
+later sprints (5-9) and must not be faked in this sprint.
+"""
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+from .packets import PSSP, PRAP
+
+PIPELINE_STAGES = [
+    ("DTCE", "Sprint 5"),
+    ("PEEE", "Sprint 6"),
+    ("PSME", "Sprint 7"),
+    ("SCE", "Sprint 8"),
+    ("ARAC", "Sprint 9"),
+]
+
+
+@dataclass
+class CommunicationLogEntry:
+    timestamp: float
+    node_id: str
+    event: str
+    packet_id: Optional[str] = None
+
+
+class CentralSynchronizationCoordinator:
+    """A single digital twin's coordinator instance."""
+
+    def __init__(self):
+        self.registry: Dict[str, object] = {}
+        self.zone_index: Dict[str, List[str]] = {}
+        self.status_repository: Dict[str, PSSP] = {}
+        self.packet_history: Dict[str, PSSP] = {}
+        self.latest_praps: Dict[str, PRAP] = {}
+        self.log: List[CommunicationLogEntry] = []
+
+        self.packets_generated = 0
+        self.packets_received = 0
+        self.valid_packets = 0
+        self.rejected_packets = 0
+        self.prap_generated = 0
+
+        self._seen_packet_ids = set()
+        self._packet_counter = 0
+        self.cycle_count = 0
+
+    def register_nodes(self, nodes):
+        self.registry = {}
+        self.zone_index = {}
+        for node in nodes:
+            self.registry[node.node_id] = node
+            self.zone_index.setdefault(node.body_zone, []).append(node.node_id)
+
+    @property
+    def registered_node_count(self):
+        return len(self.registry)
+
+    def _next_packet_id(self, prefix):
+        self._packet_counter += 1
+        return f"{prefix}-{self._packet_counter:06d}"
+
+    def validate_pssp(self, pssp: PSSP):
+        if pssp.node_id not in self.registry:
+            return False, "Unknown node ID"
+
+        node = self.registry[pssp.node_id]
+        if pssp.body_zone != node.body_zone:
+            return False, "Body zone mismatch"
+
+        delay_fields = (
+            ("clock drift", pssp.clock_drift_ms),
+            ("network delay", pssp.network_delay_ms),
+            ("actuator driver delay", pssp.actuator_driver_delay_ms),
+            ("mechanical startup delay", pssp.mechanical_startup_delay_ms),
+        )
+        for name, value in delay_fields:
+            if value is None or value < 0:
+                return False, f"Negative or missing {name}"
+
+        if pssp.battery_percent is None or not (0 <= pssp.battery_percent <= 100):
+            return False, "Battery out of range"
+
+        if pssp.simulation_timestamp is None or pssp.simulation_timestamp < 0:
+            return False, "Invalid timestamp"
+
+        required = [pssp.packet_id, pssp.node_id, pssp.body_zone, pssp.current_state]
+        if any(value is None or value == "" for value in required):
+            return False, "Missing required field"
+
+        if pssp.packet_id in self._seen_packet_ids:
+            return False, "Duplicate packet ID"
+
+        return True, None
+
+    def run_communication_cycle(self, simulation_timestamp=0.0):
+        self.cycle_count += 1
+        entries = []
+
+        for node_id, node in self.registry.items():
+            packet_id = self._next_packet_id("PSSP")
+            pssp = node.to_pssp(packet_id=packet_id, simulation_timestamp=simulation_timestamp)
+
+            self.packets_generated += 1
+            self.packets_received += 1
+            self.packet_history[pssp.packet_id] = pssp
+
+            is_valid, reason = self.validate_pssp(pssp)
+            if is_valid:
+                self._seen_packet_ids.add(pssp.packet_id)
+                self.valid_packets += 1
+                self.status_repository[node_id] = pssp
+                event = "PSSP received"
+            else:
+                self.rejected_packets += 1
+                event = f"PSSP rejected: {reason}"
+
+            entry = CommunicationLogEntry(
+                timestamp=simulation_timestamp,
+                node_id=node_id,
+                event=event,
+                packet_id=pssp.packet_id,
+            )
+            self.log.append(entry)
+            entries.append(entry)
+
+        self._generate_baseline_praps(simulation_timestamp)
+
+        return entries
+
+    def _generate_baseline_praps(self, simulation_timestamp):
+        for node_id in self.registry:
+            packet_id = self._next_packet_id("PRAP")
+            prap = PRAP(
+                packet_id=packet_id,
+                target_node_id=node_id,
+                body_zone=self.registry[node_id].body_zone,
+                simulation_timestamp=simulation_timestamp,
+            )
+            self.latest_praps[node_id] = prap
+            self.prap_generated += 1
+
+    def get_packet_counts(self):
+        return {
+            "generated": self.packets_generated,
+            "received": self.packets_received,
+            "valid": self.valid_packets,
+            "rejected": self.rejected_packets,
+        }

@@ -3,6 +3,7 @@ import pandas as pd
 
 from core.constants import NODE_COUNT_OPTIONS, ZONE_ORDER
 from core.node_factory import generate_nodes
+from core.coordinator import CentralSynchronizationCoordinator, PIPELINE_STAGES
 
 st.title("Simulation")
 
@@ -30,7 +31,13 @@ initialize = st.button("Initialize Digital Twin", type="primary", use_container_
 st.markdown("</div>", unsafe_allow_html=True)
 
 if initialize:
-    st.session_state.dt_nodes = generate_nodes(int(num_nodes), seed=int(seed))
+    nodes = generate_nodes(int(num_nodes), seed=int(seed))
+    coordinator = CentralSynchronizationCoordinator()
+    coordinator.register_nodes(nodes)
+
+    st.session_state.dt_nodes = nodes
+    st.session_state.dt_coordinator = coordinator
+    st.session_state.dt_sim_time = 0.0
     st.session_state.dt_config = {
         "num_nodes": int(num_nodes),
         "seed": int(seed),
@@ -40,6 +47,7 @@ if initialize:
 
 nodes = st.session_state.get("dt_nodes")
 config = st.session_state.get("dt_config")
+coordinator = st.session_state.get("dt_coordinator")
 
 if not nodes:
     st.markdown(
@@ -136,3 +144,89 @@ else:
         ]
 
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+
+    # -------------------------------------------------------------
+    # Central Synchronization Coordinator
+    # -------------------------------------------------------------
+    st.subheader("Central Synchronization Coordinator")
+
+    counts = coordinator.get_packet_counts()
+    metric_cols = st.columns(4)
+    metric_cols[0].metric("Registered Nodes", coordinator.registered_node_count)
+    metric_cols[1].metric("PSSPs Received", counts["received"])
+    metric_cols[2].metric("Valid Packets", counts["valid"])
+    metric_cols[3].metric("PRAPs Generated", coordinator.prap_generated)
+
+    run_cycle = st.button("Run Communication Cycle", use_container_width=True)
+    if run_cycle:
+        st.session_state.dt_sim_time = st.session_state.get("dt_sim_time", 0.0) + config["time_step"]
+        coordinator.run_communication_cycle(simulation_timestamp=st.session_state.dt_sim_time)
+        st.rerun()
+
+    st.markdown("**Communication Log**")
+    if coordinator.log:
+        recent = coordinator.log[-200:]
+        lines = [
+            f"T={entry.timestamp:.2f}  {entry.node_id} \u2192 Coordinator   {entry.event}"
+            for entry in reversed(recent)
+        ]
+        st.markdown(
+            f'<div class="psdt-comm-log">{"<br>".join(lines)}</div>',
+            unsafe_allow_html=True,
+        )
+
+        packet_ids = list(coordinator.packet_history.keys())
+        selected_packet_id = st.selectbox(
+            "Inspect a packet", list(reversed(packet_ids)), key="packet_inspector"
+        )
+        pssp = coordinator.packet_history[selected_packet_id]
+        st.markdown(
+            f"""
+            <div class="psdt-card">
+                <p style="margin:0 0 0.4rem 0;"><b>Packet ID</b><br>{pssp.packet_id}</p>
+                <p style="margin:0 0 0.4rem 0;"><b>Node</b><br>{pssp.node_id}</p>
+                <p style="margin:0 0 0.4rem 0;"><b>Zone</b><br>{pssp.body_zone}</p>
+                <p style="margin:0 0 0.8rem 0;"><b>Time</b><br>{pssp.simulation_timestamp} s</p>
+                <hr style="margin:0.6rem 0;">
+                <p style="margin:0 0 0.4rem 0;"><b>CD</b><br>{pssp.clock_drift_ms} ms</p>
+                <p style="margin:0 0 0.4rem 0;"><b>ND</b><br>{pssp.network_delay_ms} ms</p>
+                <p style="margin:0 0 0.4rem 0;"><b>AD</b><br>{pssp.actuator_driver_delay_ms} ms</p>
+                <p style="margin:0 0 0.8rem 0;"><b>MD</b><br>{pssp.mechanical_startup_delay_ms} ms</p>
+                <hr style="margin:0.6rem 0;">
+                <p style="margin:0 0 0.4rem 0;"><b>Battery</b><br>{pssp.battery_percent} %</p>
+                <p style="margin:0;"><b>State</b><br>{pssp.current_state}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="psdt-placeholder-box">No communication yet. '
+            'Click &quot;Run Communication Cycle&quot; above.</div>',
+            unsafe_allow_html=True,
+        )
+
+    # -------------------------------------------------------------
+    # Data-flow visualization
+    # -------------------------------------------------------------
+    st.subheader("Synchronization Data Flow")
+
+    chips_html = "".join(
+        f'<span class="psdt-pipeline-chip">{name}<small>{sprint}</small></span>'
+        for name, sprint in PIPELINE_STAGES
+    )
+
+    st.markdown(
+        f"""
+        <div class="psdt-card">
+            <div class="psdt-flow-label">WEARABLE NODES</div>
+            <div class="psdt-flow-arrow">\u2193 PSSP</div>
+            <div class="psdt-flow-label">CENTRAL SYNCHRONIZATION COORDINATOR</div>
+            <div class="psdt-flow-arrow">\u2193</div>
+            <div style="text-align:center;">{chips_html}</div>
+            <div class="psdt-flow-arrow">\u2193 PRAP</div>
+            <div class="psdt-flow-label">WEARABLE NODES</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

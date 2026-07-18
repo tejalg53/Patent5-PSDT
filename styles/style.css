@@ -179,3 +179,52 @@ div.stButton > button:disabled {
     word-spacing: 6px;
     margin-bottom: 0.2rem;
 }
+
+.psdt-pipeline-chip {
+    display: inline-block;
+    background-color: #EEF2F9;
+    color: #0B3D91;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 0.5rem 0.9rem;
+    margin: 0.2rem;
+    text-align: center;
+    min-width: 90px;
+    font-size: 0.85rem;
+}
+
+.psdt-pipeline-chip small {
+    display: block;
+    color: #94A3B8;
+    font-weight: 400;
+    font-size: 0.72rem;
+    margin-top: 0.15rem;
+}
+
+.psdt-flow-arrow {
+    text-align: center;
+    color: #94A3B8;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    margin: 0.2rem 0;
+}
+
+.psdt-flow-label {
+    text-align: center;
+    font-weight: 700;
+    color: #0B3D91;
+    font-size: 1.05rem;
+}
+
+.psdt-comm-log {
+    background-color: #0B3D91;
+    color: #E2E8F0;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
