@@ -88,6 +88,7 @@ div.stButton > button:disabled {
 }
 
 .psdt-module-card {
+    white-space: nowrap;
     background-color: #FFFFFF;
     border-radius: 15px;
     padding: 1.2rem;
