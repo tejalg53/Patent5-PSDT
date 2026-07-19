@@ -37,6 +37,9 @@ class HapticNode:
     perceptual_threshold: Optional[float] = None  # PT
     perceived_error: Optional[float] = None       # PE
     psm: Optional[float] = None                   # PSM
+    normalized_psm: Optional[float] = None       # NPSM
+    threshold_utilization_pct: Optional[float] = None  # TU
+    margin_sign: Optional[str] = None             # Margin Sign
     sync_state: str = "Unclassified"              # State
 
     # Telemetry counters (start at zero; updated once the time-series
