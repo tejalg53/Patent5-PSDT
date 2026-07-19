@@ -176,3 +176,73 @@ else:
         'analytics.</div>',
         unsafe_allow_html=True,
     )
+# ---------------------------------------------------------------------
+# Sprint 7: Perceptual Synchronization Margin analytics, computed by the
+# PSME for every node that already has both PT (DTCE) and PE (PEEE).
+# ---------------------------------------------------------------------
+st.markdown("<br>", unsafe_allow_html=True)
+st.subheader("Mean Perceptual Synchronization Margin by Body Zone")
+if coordinator and coordinator.psme_audit:
+    psm_rows = [
+        {"Body Zone": node.body_zone, "PSM (ms)": node.psm}
+        for node in coordinator.registry.values()
+        if node.psm is not None
+    ]
+    psm_df = pd.DataFrame(psm_rows)
+    mean_psm_by_zone = (
+        psm_df.groupby("Body Zone")["PSM (ms)"]
+        .mean()
+        .reindex([z for z in ZONE_ORDER if z in psm_df["Body Zone"].unique()])
+    )
+    st.bar_chart(mean_psm_by_zone)
+    st.caption(
+        "Mean Perceptual Synchronization Margin PSMz(t) per body zone, across all "
+        "active nodes. Computed by the PSME (Sprint 7) as PSM = PT - PE; positive "
+        "values indicate margin remaining before the perceptual threshold is "
+        "exceeded, negative values indicate the threshold has been exceeded."
+    )
+    st.markdown("###### PT\u2013PE\u2013PSM Diagnostic View")
+    ptpe_psm_rows = [
+        {
+            "Body Zone": node.body_zone,
+            "PT (ms)": node.perceptual_threshold,
+            "PE (ms)": node.perceived_error,
+            "PSM (ms)": node.psm,
+        }
+        for node in coordinator.registry.values()
+        if node.psm is not None
+    ]
+    ptpe_psm_df = pd.DataFrame(ptpe_psm_rows)
+    diagnostic_by_zone = (
+        ptpe_psm_df.groupby("Body Zone")[["PT (ms)", "PE (ms)", "PSM (ms)"]]
+        .mean()
+        .reindex([z for z in ZONE_ORDER if z in ptpe_psm_df["Body Zone"].unique()])
+    )
+    st.dataframe(diagnostic_by_zone.round(2), use_container_width=True)
+    st.caption(
+        "Mean PT, PE and resulting PSM per body zone. PSM = PT - PE: remaining "
+        "margin when positive, exceeded margin when negative."
+    )
+    st.markdown("###### PSM Distribution")
+    psm_hist = (
+        alt.Chart(psm_df)
+        .mark_bar()
+        .encode(
+            x=alt.X("PSM (ms):Q", bin=alt.Bin(maxbins=20), title="PSM (ms)"),
+            y=alt.Y("count()", title="Node Count"),
+        )
+    )
+    st.altair_chart(psm_hist, use_container_width=True)
+    st.caption(
+        "Distribution of Perceptual Synchronization Margin values across all "
+        "active nodes. Values below zero (Margin Sign: NEGATIVE) indicate the "
+        "node's perceptual threshold has been exceeded by the estimated "
+        "perceived error."
+    )
+else:
+    st.markdown(
+        '<div class="psdt-placeholder-box">Run a communication cycle on the '
+        'Simulation page to populate Perceptual Synchronization Margin '
+        'analytics.</div>',
+        unsafe_allow_html=True,
+    )
