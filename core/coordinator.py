@@ -2,6 +2,7 @@
 Sprint 4 - Central Synchronization Coordinator.
 Sprint 5 - adds the DTCE pass (Dynamic Perceptual Threshold PTz(t)).
 Sprint 6 - adds the PEEE pass (Estimated Perceived Error PEz(t)).
+Sprint 7 - adds the PSME pass (Perceptual Synchronization Margin PSMz(t)).
 
 Responsible for:
 - registering wearable nodes into a registry indexed by Node ID and zone
@@ -11,11 +12,11 @@ Responsible for:
 - maintaining packet/event counters
 - preparing (placeholder, non-adaptive) resource-allocation commands (PRAP)
 - logging synchronization communication
-- running DTCE (PTz(t)) and PEEE (PEz(t)) for every registered node
+- running DTCE (PTz(t)), PEEE (PEz(t)) and PSME (PSMz(t)) for every registered node
 
-The PSME / SCE / ARAC engines are represented here only as named
-placeholders in the processing pipeline. They are implemented in later
-sprints (7-9) and must not be faked in this sprint.
+The SCE / ARAC engines are represented here only as named placeholders
+in the processing pipeline. They are implemented in later sprints (8-9)
+and must not be faked in this sprint.
 """
 
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from typing import Dict, List, Optional
 from .packets import PSSP, PRAP
 from .dtce import DynamicThresholdCharacterizationEngine, DTCEAudit
 from .peee import PerceivedErrorEstimationEngine, PEEEAudit
+from .psme import PerceptualSynchronizationMarginEngine, PSMResult
 from .error_profiles import DEFAULT_PE_MODEL, DEFAULT_WEIGHTS, DEFAULT_NETWORK_CONDITION
 
 PIPELINE_STAGES = [
@@ -70,6 +72,8 @@ class CentralSynchronizationCoordinator:
             "weights": dict(DEFAULT_WEIGHTS),
             "network_condition": DEFAULT_NETWORK_CONDITION,
         }
+        self.psme = PerceptualSynchronizationMarginEngine()
+        self.psme_audit: Dict[str, PSMResult] = {}
         self._last_timestamp = 0.0
 
         self.packets_generated = 0
@@ -168,6 +172,7 @@ class CentralSynchronizationCoordinator:
         self._generate_baseline_praps(simulation_timestamp)
         self.run_dtce_pass()
         self.run_peee_pass()
+        self.run_psme_pass()
 
         return entries
 
@@ -214,6 +219,7 @@ class CentralSynchronizationCoordinator:
             )
             self.dtce_audit[node_id] = audit
             node.perceptual_threshold = audit.dynamic_pt_ms
+        self.run_psme_pass()
         return self.dtce_audit
 
     def set_error_model_context(self, model=None, weights=None, network_condition=None):
@@ -250,7 +256,30 @@ class CentralSynchronizationCoordinator:
             )
             self.peee_audit[node_id] = audit
             node.perceived_error = audit.perceived_error_ms
+        self.run_psme_pass()
         return self.peee_audit
+    def run_psme_pass(self):
+        """Run the Perceptual Synchronization Margin Engine for every
+        registered node that already has both a Dynamic Perceptual
+        Threshold PTz(t) (from DTCE) and an Estimated Perceived Error
+        PEz(t) (from PEEE). Stores a full audit trail per node and writes
+        PSM/NPSM/Threshold Utilization/Margin Sign back onto the node
+        itself. Nodes missing PT or PE are left uncomputed (None) rather
+        than faked. Returns the psme_audit dict (node_id -> PSMResult).
+        """
+        for node_id, node in self.registry.items():
+            if node.perceptual_threshold is None or node.perceived_error is None:
+                continue
+            result = self.psme.compute_margin(
+                pt_ms=node.perceptual_threshold,
+                pe_ms=node.perceived_error,
+            )
+            self.psme_audit[node_id] = result
+            node.psm = result.psm_ms
+            node.normalized_psm = result.normalized_psm
+            node.threshold_utilization_pct = result.threshold_utilization_pct
+            node.margin_sign = result.margin_sign
+        return self.psme_audit
 
     def advance_timing_state(self, elapsed_seconds):
         """Advance every node's raw simulated timing measurements by
