@@ -1,18 +1,21 @@
 """
 Sprint 4 - Central Synchronization Coordinator.
+Sprint 5 - adds the DTCE pass (Dynamic Perceptual Threshold PTz(t)).
+Sprint 6 - adds the PEEE pass (Estimated Perceived Error PEz(t)).
 
 Responsible for:
-  - registering wearable nodes into a registry indexed by Node ID and zone
-  - requesting/receiving node synchronization status (PSSP)
-  - validating incoming status packets
-  - storing the latest status of every node
-  - maintaining packet/event counters
-  - preparing (placeholder, non-adaptive) resource-allocation commands (PRAP)
-  - logging synchronization communication
+- registering wearable nodes into a registry indexed by Node ID and zone
+- requesting/receiving node synchronization status (PSSP)
+- validating incoming status packets
+- storing the latest status of every node
+- maintaining packet/event counters
+- preparing (placeholder, non-adaptive) resource-allocation commands (PRAP)
+- logging synchronization communication
+- running DTCE (PTz(t)) and PEEE (PEz(t)) for every registered node
 
-The DTCE / PEEE / PSME / SCE / ARAC engines are represented here only as
-named placeholders in the processing pipeline. They are implemented in
-later sprints (5-9) and must not be faked in this sprint.
+The PSME / SCE / ARAC engines are represented here only as named
+placeholders in the processing pipeline. They are implemented in later
+sprints (7-9) and must not be faked in this sprint.
 """
 
 from dataclasses import dataclass
@@ -20,6 +23,8 @@ from typing import Dict, List, Optional
 
 from .packets import PSSP, PRAP
 from .dtce import DynamicThresholdCharacterizationEngine, DTCEAudit
+from .peee import PerceivedErrorEstimationEngine, PEEEAudit
+from .error_profiles import DEFAULT_PE_MODEL, DEFAULT_WEIGHTS, DEFAULT_NETWORK_CONDITION
 
 PIPELINE_STAGES = [
     ("DTCE", "Sprint 5"),
@@ -41,7 +46,7 @@ class CommunicationLogEntry:
 class CentralSynchronizationCoordinator:
     """A single digital twin's coordinator instance."""
 
-    def __init__(self):
+    def __init__(self, seed=None):
         self.registry: Dict[str, object] = {}
         self.zone_index: Dict[str, List[str]] = {}
         self.status_repository: Dict[str, PSSP] = {}
@@ -57,6 +62,15 @@ class CentralSynchronizationCoordinator:
             "motion_state": "Stationary",
             "environment_state": "Normal",
         }
+
+        self.peee = PerceivedErrorEstimationEngine(seed=seed)
+        self.peee_audit: Dict[str, PEEEAudit] = {}
+        self.error_model_context = {
+            "model": DEFAULT_PE_MODEL,
+            "weights": dict(DEFAULT_WEIGHTS),
+            "network_condition": DEFAULT_NETWORK_CONDITION,
+        }
+        self._last_timestamp = 0.0
 
         self.packets_generated = 0
         self.packets_received = 0
@@ -120,6 +134,10 @@ class CentralSynchronizationCoordinator:
         self.cycle_count += 1
         entries = []
 
+        elapsed = max(0.0, simulation_timestamp - self._last_timestamp)
+        self._last_timestamp = simulation_timestamp
+        self.advance_timing_state(elapsed)
+
         for node_id, node in self.registry.items():
             packet_id = self._next_packet_id("PSSP")
             pssp = node.to_pssp(packet_id=packet_id, simulation_timestamp=simulation_timestamp)
@@ -149,6 +167,7 @@ class CentralSynchronizationCoordinator:
 
         self._generate_baseline_praps(simulation_timestamp)
         self.run_dtce_pass()
+        self.run_peee_pass()
 
         return entries
 
@@ -196,6 +215,50 @@ class CentralSynchronizationCoordinator:
             self.dtce_audit[node_id] = audit
             node.perceptual_threshold = audit.dynamic_pt_ms
         return self.dtce_audit
+
+    def set_error_model_context(self, model=None, weights=None, network_condition=None):
+        """Update the shared Error Model context used by PEEE for every node."""
+        if model is not None:
+            self.error_model_context["model"] = model
+        if weights is not None:
+            self.error_model_context["weights"] = weights
+        if network_condition is not None:
+            self.error_model_context["network_condition"] = network_condition
+
+    def run_peee_pass(self):
+        """Run the Perceived Error Estimation Engine for every registered
+        node using the current Error Model context. Stores a full audit
+        trail per node and writes PEz(t) back onto the node itself.
+        Returns the peee_audit dict (node_id -> PEEEAudit).
+        """
+        ctx = self.error_model_context
+        for node_id, node in self.registry.items():
+            cd = self.peee.resolve_clock_drift_ms(node.clock_drift)
+            nd = self.peee.resolve_network_residual_ms(node.network_delay, ctx["network_condition"])
+            ad = self.peee.resolve_actuator_driver_delay_ms(node.actuator_driver_delay, node.actuator_type)
+            md = self.peee.resolve_mechanical_startup_delay_ms(node.mechanical_startup_delay, node.actuator_type)
+
+            audit = self.peee.compute_error(
+                clock_drift_ms=cd,
+                network_residual_ms=nd,
+                actuator_driver_delay_ms=ad,
+                mechanical_startup_delay_ms=md,
+                model=ctx["model"],
+                weights=ctx["weights"],
+                node_id=node_id,
+                body_zone=node.body_zone,
+            )
+            self.peee_audit[node_id] = audit
+            node.perceived_error = audit.perceived_error_ms
+        return self.peee_audit
+
+    def advance_timing_state(self, elapsed_seconds):
+        """Advance every node's raw simulated timing measurements by
+        elapsed_seconds (infrastructure for Sprint 10's live time
+        evolution). Uses the coordinator's current network condition."""
+        network_condition = self.error_model_context["network_condition"]
+        for node in self.registry.values():
+            self.peee.update_timing_state(node, elapsed_seconds, network_condition=network_condition)
 
     def get_packet_counts(self):
         return {
