@@ -123,7 +123,10 @@ else:
             <hr style="margin:0.6rem 0;">
             <p style="margin:0 0 0.4rem 0;"><b>PT (Dynamic)</b><br>{fmt(round(selected_node.perceptual_threshold, 2) if selected_node.perceptual_threshold is not None else None, " ms")}</p>
             <p style="margin:0 0 0.4rem 0;"><b>PE</b><br>{fmt(round(selected_node.perceived_error, 2) if selected_node.perceived_error is not None else None, " ms")}</p>
-            <p style="margin:0 0 0.4rem 0;"><b>PSM</b><br>{fmt(selected_node.psm)}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>PSM</b><br>{fmt(round(selected_node.psm, 2) if selected_node.psm is not None else None, " ms")}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>NPSM</b><br>{fmt(round(selected_node.normalized_psm, 4) if selected_node.normalized_psm is not None else None)}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Threshold Utilization</b><br>{fmt(round(selected_node.threshold_utilization_pct, 2) if selected_node.threshold_utilization_pct is not None else None, "%")}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Margin Sign</b><br>{fmt(selected_node.margin_sign)}</p>
             <p style="margin:0;"><b>State</b><br>{selected_node.sync_state}</p>
             </div>
             """,
@@ -192,10 +195,28 @@ else:
                 unsafe_allow_html=True,
             )
 
-        st.markdown(
-            '<div class="psdt-placeholder-box">PSM &mdash; Awaiting PSM Engine &mdash; Sprint 7</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown("##### Perceptual Synchronization Margin")
+        psme_result = coordinator.psme_audit.get(selected_id) if coordinator else None
+        if psme_result:
+            st.markdown(
+                f"""
+                <div class="psdt-card">
+                <p style="margin:0 0 0.3rem 0;">PT: <b>{psme_result.pt_ms:.2f} ms</b></p>
+                <p style="margin:0 0 0.3rem 0;">PE: <b>{psme_result.pe_ms:.2f} ms</b></p>
+                <p style="margin:0 0 0.6rem 0;">PSM = PT - PE = {psme_result.pt_ms:.2f} - {psme_result.pe_ms:.2f} = <b>{psme_result.psm_ms:+.2f} ms</b></p>
+                <p style="margin:0 0 0.3rem 0;">Normalized PSM: <b>{psme_result.normalized_psm:.4f}</b></p>
+                <p style="margin:0 0 0.3rem 0;">Threshold Utilization: <b>{psme_result.threshold_utilization_pct:.2f}%</b></p>
+                <p style="margin:0;">Margin Sign: <b>{psme_result.margin_sign}</b></p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="psdt-placeholder-box">Run a communication cycle to compute '
+                'this node&#39;s Perceptual Synchronization Margin.</div>',
+                unsafe_allow_html=True,
+            )
 
     with table_col:
         st.subheader("Node Table")
@@ -210,7 +231,12 @@ else:
                 "ND (ms)": n.network_delay,
                 "AD (ms)": n.actuator_driver_delay,
                 "MD (ms)": n.mechanical_startup_delay,
+                "PT (ms)": round(n.perceptual_threshold, 2) if n.perceptual_threshold is not None else None,
                 "PE (ms)": round(n.perceived_error, 2) if n.perceived_error is not None else None,
+                "PSM (ms)": round(n.psm, 2) if n.psm is not None else None,
+                "NPSM": round(n.normalized_psm, 4) if n.normalized_psm is not None else None,
+                "Threshold Utilization (%)": round(n.threshold_utilization_pct, 2) if n.threshold_utilization_pct is not None else None,
+                "Margin Sign": n.margin_sign,
                 "Battery (%)": n.battery_level,
                 "State": n.sync_state,
             }
