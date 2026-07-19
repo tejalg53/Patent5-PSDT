@@ -11,7 +11,7 @@ st.markdown(
 MODULE_KEYS = ["DTCE", "PEEE", "PSME", "SCE", "ARAC"]
 PLACEHOLDER = "(To be added)"
 
-IMPLEMENTED_MODULES = {"DTCE"}
+IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME"}
 
 MODULE_INFO = {
     "DTCE": {
