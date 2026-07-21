@@ -23,6 +23,12 @@ MAX_HISTORY_LENGTH = 100
 # MAX_HISTORY_LENGTH since it tracks classified states, not raw PT/PE/PSM.
 MAX_STATE_HISTORY_LENGTH = 50
 
+# Maximum number of recent (step, timestamp, resource) samples retained
+# per node's resource-allocation history (Sprint 9 ARAC). Kept separate
+# from the other history buffers since it tracks allocated resources,
+# not raw PT/PE/PSM or classified states.
+MAX_RESOURCE_HISTORY_LENGTH = 50
+
 
 @dataclass
 class HapticNode:
@@ -57,6 +63,17 @@ class HapticNode:
     persistence_counter: int = 0                  # Persistence Counter (SCE)
     pending_state: Optional[str] = None           # Internal SCE dwell-time bookkeeping
 
+    # Resource allocation (ARAC, Sprint 9). None until ARAC has run at
+    # least once for this node; the node continues to use its fixed
+    # baseline sync_interval (above) until then.
+    allocated_sync_interval_ms: Optional[float] = None
+    allocated_beacon_interval_ms: Optional[float] = None
+    allocated_radio_wakeup_interval_ms: Optional[float] = None
+    allocated_transmit_power_level: Optional[str] = None
+    allocated_transmit_power_pct: Optional[float] = None
+    allocated_trigger_offset_ms: Optional[float] = None
+    resource_status: str = "Baseline"             # "Baseline" or "Adaptive" (ARAC)
+
     # Telemetry counters (start at zero; updated once the time-series
     # simulation loop exists).
     packet_count: int = 0
@@ -72,6 +89,12 @@ class HapticNode:
     # last. Bounded to MAX_STATE_HISTORY_LENGTH entries. Populated by the
     # Coordinator's run_sce_pass() each cycle a state is classified.
     state_history: list = field(default_factory=list)
+
+    # Rolling history of (step, timestamp, resource) samples, most recent
+    # last. Bounded to MAX_RESOURCE_HISTORY_LENGTH entries. Populated by
+    # the Coordinator's run_arac_pass() each cycle a resource allocation
+    # is computed.
+    resource_history: list = field(default_factory=list)
 
     def to_pssp(self, packet_id: str, simulation_timestamp: float) -> PSSP:
         """Generate this node's current Perceptual Synchronization Status Packet."""
@@ -124,3 +147,24 @@ class HapticNode:
         })
         if len(self.state_history) > MAX_STATE_HISTORY_LENGTH:
             self.state_history = self.state_history[-MAX_STATE_HISTORY_LENGTH:]
+
+    def record_resource_history(self, step: int, timestamp: float, sync_interval_ms: float,
+                                 beacon_interval_ms: float, transmit_power_pct: float) -> None:
+        """Append one (step, timestamp, resource) sample to this node's
+        rolling resource-history buffer, discarding the oldest sample once
+        the buffer exceeds MAX_RESOURCE_HISTORY_LENGTH entries
+        (Sprint 9 Deliverable 18).
+
+        Pure bookkeeping only - does not itself decide the allocation;
+        that is ARAC's job (core/arac.py), called from the Coordinator's
+        run_arac_pass().
+        """
+        self.resource_history.append({
+            "step": step,
+            "timestamp": timestamp,
+            "sync_interval_ms": sync_interval_ms,
+            "beacon_interval_ms": beacon_interval_ms,
+            "transmit_power_pct": transmit_power_pct,
+        })
+        if len(self.resource_history) > MAX_RESOURCE_HISTORY_LENGTH:
+            self.resource_history = self.resource_history[-MAX_RESOURCE_HISTORY_LENGTH:]
