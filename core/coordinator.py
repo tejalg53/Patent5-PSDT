@@ -9,6 +9,13 @@ Sprint 8 - adds the SCE pass (Synchronization Classification Engine):
            classifies each node into RELAXED/NOMINAL/ELEVATED/IMMEDIATE
            from its NPSM, with hysteresis and dwell-time persistence, and
            maintains a rolling state_history buffer per node.
+Sprint 9 - adds the ARAC pass (Adaptive Resource Allocation Controller):
+           turns each node's SCE-classified state into concrete adaptive
+           resource settings (sync interval, beacon interval, radio
+           wake-up interval, transmit power, trigger-timing offset),
+           replaces the placeholder baseline PRAP with a real one, and
+           estimates radio-active-time/energy consumption. This closes
+           the patent's control loop.
 
 Responsible for:
 - registering wearable nodes into a registry indexed by Node ID and zone
@@ -22,8 +29,8 @@ Responsible for:
   classification) for every registered node
 
 The ARAC engine is represented here only as a named placeholder in the
-processing pipeline. It is implemented in Sprint 9 and must not be
-faked in this sprint. SCE (Sprint 8) is now fully implemented above.
+processing pipeline until Sprint 9. SCE (Sprint 8) and ARAC (Sprint 9)
+are now both fully implemented above.
 """
 
 from dataclasses import dataclass
@@ -34,7 +41,13 @@ from .dtce import DynamicThresholdCharacterizationEngine, DTCEAudit
 from .peee import PerceivedErrorEstimationEngine, PEEEAudit
 from .psme import PerceptualSynchronizationMarginEngine, PSMResult
 from .sce import SynchronizationClassificationEngine, SCEResult
+from .arac import AdaptiveResourceAllocationController, ARACResult
 from .error_profiles import DEFAULT_PE_MODEL, DEFAULT_WEIGHTS, DEFAULT_NETWORK_CONDITION
+from config.resource_profiles import (
+    RADIO_WAKE_DURATION_S,
+    ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL,
+    DEFAULT_TRANSMIT_POWER_LEVEL,
+)
 
 PIPELINE_STAGES = [
     ("DTCE", "Sprint 5"),
@@ -84,6 +97,8 @@ class CentralSynchronizationCoordinator:
         self.psme_audit: Dict[str, PSMResult] = {}
         self.sce = SynchronizationClassificationEngine()
         self.sce_audit: Dict[str, SCEResult] = {}
+        self.arac = AdaptiveResourceAllocationController()
+        self.arac_audit: Dict[str, ARACResult] = {}
         self._last_timestamp = 0.0
 
         self.packets_generated = 0
@@ -184,6 +199,7 @@ class CentralSynchronizationCoordinator:
         self.run_peee_pass()
         self.run_psme_pass()
         self.run_sce_pass()
+        self.run_arac_pass(elapsed_seconds=elapsed)
 
         return entries
 
@@ -380,6 +396,110 @@ class CentralSynchronizationCoordinator:
                 state=node.sync_state,
             )
         return self.sce_audit
+
+    def run_arac_pass(self, elapsed_seconds=0.0):
+        """Run the Adaptive Resource Allocation Controller for every node
+        that already has a classified state (from SCE). Computes a new
+        synchronization interval, beacon interval, radio wake-up
+        interval, transmit power, and trigger-timing offset for each
+        node, writes them back onto the node as its allocated resources,
+        replaces that node's placeholder baseline PRAP with a real
+        adaptive one, and estimates radio_active_time/energy_consumed
+        for this cycle from the allocated wake-up interval and transmit
+        power (Sprint 9 Deliverable 15). These energy figures are
+        estimated values derived from the simulation model, not direct
+        hardware measurements.
+
+        Nodes still "Unclassified" are left on their fixed baseline
+        resources rather than faked. Uses the ARAC's boundary-safe entry
+        point (safe_allocate) so a single malformed node can never raise
+        out of a simulation cycle and take the whole Coordinator down
+        with it - on invalid input the node's previous allocated
+        resources (or documented NOMINAL defaults) are retained and the
+        event is logged to the communication log. Returns the arac_audit
+        dict (node_id -> ARACResult).
+        """
+        for node_id, node in self.registry.items():
+            if node.sync_state == "Unclassified":
+                continue
+
+            previous_resources = None
+            if node.resource_status == "Adaptive":
+                previous_resources = {
+                    "sync_interval_ms": node.allocated_sync_interval_ms,
+                    "beacon_interval_ms": node.allocated_beacon_interval_ms,
+                    "radio_wakeup_interval_ms": node.allocated_radio_wakeup_interval_ms,
+                    "transmit_power_level": node.allocated_transmit_power_level,
+                    "transmit_power_pct": node.allocated_transmit_power_pct,
+                    "trigger_timing_offset_ms": node.allocated_trigger_offset_ms,
+                }
+
+            result = self.arac.safe_allocate(
+                state=node.sync_state,
+                battery=node.battery_level,
+                pt=node.perceptual_threshold,
+                pe=node.perceived_error,
+                psm=node.psm,
+                body_zone=node.body_zone,
+                mechanical_delay_ms=node.mechanical_startup_delay,
+                actuator_driver_delay_ms=node.actuator_driver_delay,
+                previous_resources=previous_resources,
+            )
+            self.arac_audit[node_id] = result
+
+            if result.status == "INVALID_INPUT":
+                self.log.append(
+                    CommunicationLogEntry(
+                        timestamp=self._last_timestamp,
+                        node_id=node_id,
+                        event=f"ARAC rejected invalid input: {result.error_reason}",
+                        packet_id=None,
+                    )
+                )
+
+            node.allocated_sync_interval_ms = result.sync_interval_ms
+            node.allocated_beacon_interval_ms = result.beacon_interval_ms
+            node.allocated_radio_wakeup_interval_ms = result.radio_wakeup_interval_ms
+            node.allocated_transmit_power_level = result.transmit_power_level
+            node.allocated_transmit_power_pct = result.transmit_power_pct
+            node.allocated_trigger_offset_ms = result.trigger_timing_offset_ms
+            node.resource_status = "Adaptive"
+
+            packet_id = self._next_packet_id("PRAP")
+            prap = PRAP(
+                packet_id=packet_id,
+                target_node_id=node_id,
+                body_zone=node.body_zone,
+                simulation_timestamp=self._last_timestamp,
+                target_state=node.sync_state,
+                sync_interval_ms=result.sync_interval_ms,
+                beacon_interval_ms=result.beacon_interval_ms,
+                radio_wakeup_interval_ms=result.radio_wakeup_interval_ms,
+                transmit_power_level=result.transmit_power_level,
+                trigger_timing_offset_ms=result.trigger_timing_offset_ms,
+                is_baseline=False,
+            )
+            self.latest_praps[node_id] = prap
+            self.prap_generated += 1
+
+            if result.radio_wakeup_interval_ms:
+                wake_count = elapsed_seconds / (result.radio_wakeup_interval_ms / 1000.0)
+                active_seconds = wake_count * RADIO_WAKE_DURATION_S
+                node.radio_active_time += active_seconds
+                cost_per_second = ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL.get(
+                    result.transmit_power_level,
+                    ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL[DEFAULT_TRANSMIT_POWER_LEVEL],
+                )
+                node.energy_consumed += active_seconds * cost_per_second
+
+            node.record_resource_history(
+                step=self.cycle_count,
+                timestamp=self._last_timestamp,
+                sync_interval_ms=result.sync_interval_ms,
+                beacon_interval_ms=result.beacon_interval_ms,
+                transmit_power_pct=result.transmit_power_pct,
+            )
+        return self.arac_audit
 
     def advance_timing_state(self, elapsed_seconds):
         """Advance every node's raw simulated timing measurements by
