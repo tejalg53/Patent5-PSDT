@@ -4,7 +4,7 @@ st.title("Patent Architecture")
 
 st.markdown(
     '<div style="text-align:center; font-weight:700; color:#0B3D91; font-size:1.15rem;">Coordinator</div>'
-    '<div style="text-align:center; font-size:1.6rem; color:#94A3B8; line-height:1;">\u2193</div>',
+    '<div style="text-align:center; font-size:1.6rem; color:#94A3B8; line-height:1;">↓</div>',
     unsafe_allow_html=True,
 )
 
@@ -16,12 +16,26 @@ IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME"}
 MODULE_INFO = {
     "DTCE": {
         "purpose": "Computes a time-varying, body-zone-specific Dynamic Perceptual "
-                    "Threshold PTz(t) for every active wearable node.",
+                   "Threshold PTz(t) for every active wearable node.",
         "input": "Body zone, vibration frequency, actuator type, user calibration, "
                  "motion state, environmental context",
         "output": "Dynamic Perceptual Threshold PTz(t) per node, with a full "
                   "auditable factor-by-factor breakdown",
         "equation": "PTz(t) = PTbase,z x Ff x Fa x UCF x Fm x Fe",
+        "patent_section": PLACEHOLDER,
+    },
+    "PSME": {
+        "purpose": "Computes the Perceptual Synchronization Margin PSMz(t) for every "
+                   "active wearable node by combining its Dynamic Perceptual Threshold "
+                   "(from the DTCE) with its Estimated Perceived Error (from the PEEE). "
+                   "It characterizes the remaining modeled synchronization tolerance "
+                   "only — it assigns no Relaxed/Nominal/Elevated/Immediate state.",
+        "input": "Dynamic Perceptual Threshold PTz(t) (from DTCE), Estimated Perceived "
+                 "Error PEz(t) (from PEEE)",
+        "output": "Perceptual Synchronization Margin PSMz(t), Normalized PSM, "
+                  "Threshold Utilization, and Margin Sign (Positive / Boundary / "
+                  "Negative), with a full auditable trail per node",
+        "equation": "PSMz(t) = PTz(t) - PEz(t)",
         "patent_section": PLACEHOLDER,
     },
 }
@@ -47,7 +61,7 @@ for col, key in zip(module_cols, MODULE_KEYS):
             st.rerun()
 
 st.markdown(
-    '<div style="text-align:center; font-size:1.6rem; color:#94A3B8; line-height:1; margin-top:1rem;">\u2193</div>'
+    '<div style="text-align:center; font-size:1.6rem; color:#94A3B8; line-height:1; margin-top:1rem;">↓</div>'
     '<div style="text-align:center; font-weight:700; color:#0B3D91; font-size:1.15rem;">Distributed Nodes</div>',
     unsafe_allow_html=True,
 )
@@ -61,12 +75,12 @@ if selected:
     st.markdown(
         f"""
         <div class="psdt-card">
-            <h3 style="margin-top:0;">{selected}</h3>
-            <p style="margin:0 0 0.7rem 0;"><b>Purpose</b><br>{info.get('purpose', PLACEHOLDER)}</p>
-            <p style="margin:0 0 0.7rem 0;"><b>Input</b><br>{info.get('input', PLACEHOLDER)}</p>
-            <p style="margin:0 0 0.7rem 0;"><b>Output</b><br>{info.get('output', PLACEHOLDER)}</p>
-            <p style="margin:0 0 0.7rem 0;"><b>Equation</b><br>{info.get('equation', PLACEHOLDER)}</p>
-            <p style="margin:0;"><b>Patent Section</b><br>{info.get('patent_section', PLACEHOLDER)}</p>
+        <h3 style="margin-top:0;">{selected}</h3>
+        <p style="margin:0 0 0.7rem 0;"><b>Purpose</b><br>{info.get('purpose', PLACEHOLDER)}</p>
+        <p style="margin:0 0 0.7rem 0;"><b>Input</b><br>{info.get('input', PLACEHOLDER)}</p>
+        <p style="margin:0 0 0.7rem 0;"><b>Output</b><br>{info.get('output', PLACEHOLDER)}</p>
+        <p style="margin:0 0 0.7rem 0;"><b>Equation</b><br>{info.get('equation', PLACEHOLDER)}</p>
+        <p style="margin:0;"><b>Patent Section</b><br>{info.get('patent_section', PLACEHOLDER)}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -76,15 +90,33 @@ if selected:
         st.markdown(
             """
             <div class="psdt-card" style="text-align:center; margin-top:1rem;">
-                <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
-                <p style="margin:0 0 0.7rem 0;">Body Zone &nbsp;|&nbsp; Frequency &nbsp;|&nbsp; Actuator
-                &nbsp;|&nbsp; Calibration &nbsp;|&nbsp; Motion &nbsp;|&nbsp; Environment</p>
-                <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
-                <p style="margin:0.5rem 0; font-weight:700; color:#0B3D91;">
-                Dynamic Threshold Characterization Engine</p>
-                <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
-                <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUT</p>
-                <p style="margin:0;">PTz(t) &ndash; Dynamic Perceptual Threshold</p>
+            <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
+            <p style="margin:0 0 0.7rem 0;">Body Zone &nbsp;|&nbsp; Frequency &nbsp;|&nbsp; Actuator
+            &nbsp;|&nbsp; Calibration &nbsp;|&nbsp; Motion &nbsp;|&nbsp; Environment</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0; font-weight:700; color:#0B3D91;">
+            Dynamic Threshold Characterization Engine</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUT</p>
+            <p style="margin:0;">PTz(t) &ndash; Dynamic Perceptual Threshold</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif selected == "PSME":
+        st.markdown(
+            """
+            <div class="psdt-card" style="text-align:center; margin-top:1rem;">
+            <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
+            <p style="margin:0 0 0.7rem 0;">PTz(t) &nbsp;|&nbsp; PEz(t)</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0; font-weight:700; color:#0B3D91;">
+            Perceptual Synchronization Margin Engine</p>
+            <p style="margin:0 0 0.5rem 0; font-family:monospace;">PSMz(t) = PTz(t) &minus; PEz(t)</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUTS</p>
+            <p style="margin:0;">Raw PSM &nbsp;|&nbsp; Normalized PSM &nbsp;|&nbsp;
+            Threshold Utilization &nbsp;|&nbsp; Margin Sign</p>
             </div>
             """,
             unsafe_allow_html=True,
