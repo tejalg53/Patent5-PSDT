@@ -2,7 +2,9 @@
 Sprint 4 - Central Synchronization Coordinator.
 Sprint 5 - adds the DTCE pass (Dynamic Perceptual Threshold PTz(t)).
 Sprint 6 - adds the PEEE pass (Estimated Perceived Error PEz(t)).
-Sprint 7 - adds the PSME pass (Perceptual Synchronization Margin PSMz(t)).
+Sprint 7 - adds the PSME pass (Perceptual Synchronization Margin PSMz(t))
+           and seeds a rolling PT/PE/PSM history buffer per node for
+           Sprint 8+ (hysteresis/dwell-time, trend animation, graphs).
 
 Responsible for:
 - registering wearable nodes into a registry indexed by Node ID and zone
@@ -276,6 +278,10 @@ class CentralSynchronizationCoordinator:
         the communication log; that node's PT/PE are left untouched and
         its previously computed PSM/NPSM/TU/Margin Sign are not reset to
         fabricated values. Returns the psme_audit dict (node_id -> PSMResult).
+
+        Also appends a (step, timestamp, PT, PE, PSM) sample to each valid
+        node's rolling history buffer (HapticNode.record_history_point),
+        bounded to MAX_HISTORY_LENGTH entries, for use by later sprints.
         """
         for node_id, node in self.registry.items():
             if node.perceptual_threshold is None or node.perceived_error is None:
@@ -302,6 +308,13 @@ class CentralSynchronizationCoordinator:
             node.normalized_psm = result.normalized_psm
             node.threshold_utilization_pct = result.threshold_utilization_pct
             node.margin_sign = result.margin_sign
+            node.record_history_point(
+                step=self.cycle_count,
+                timestamp=self._last_timestamp,
+                pt=node.perceptual_threshold,
+                pe=node.perceived_error,
+                psm=node.psm,
+            )
         return self.psme_audit
 
     def advance_timing_state(self, elapsed_seconds):
