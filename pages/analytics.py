@@ -7,11 +7,11 @@ st.markdown(
 st.markdown("<br>", unsafe_allow_html=True)
 
 cards = [
-    ("\U0001F4E6", "Packets"),
-    ("\U0001F50B", "Battery"),
-    ("\u26A1", "Energy"),
-    ("\U0001F4E1", "Communication"),
-    ("\U0001F9ED", "Node States"),
+    ("📦", "Packets"),
+    ("🔋", "Battery"),
+    ("⚡", "Energy"),
+    ("📡", "Communication"),
+    ("🧭", "Node States"),
 ]
 
 cols = st.columns(len(cards))
@@ -112,7 +112,7 @@ if coordinator and coordinator.peee_audit:
         "and weights; it is not a safety or severity classification."
     )
 
-    st.markdown("###### Threshold\u2013Error Diagnostic View")
+    st.markdown("###### Threshold–Error Diagnostic View")
     if coordinator.dtce_audit:
         pt_by_zone = (
             pd.DataFrame(
@@ -166,7 +166,7 @@ if coordinator and coordinator.peee_audit:
     else:
         st.markdown(
             '<div class="psdt-placeholder-box">Run a communication cycle to populate '
-            'the Threshold\u2013Error Diagnostic View.</div>',
+            'the Threshold–Error Diagnostic View.</div>',
             unsafe_allow_html=True,
         )
 else:
@@ -201,7 +201,7 @@ if coordinator and coordinator.psme_audit:
         "values indicate margin remaining before the perceptual threshold is "
         "exceeded, negative values indicate the threshold has been exceeded."
     )
-    st.markdown("###### PT\u2013PE\u2013PSM Diagnostic View")
+    st.markdown("###### PT–PE–PSM Diagnostic View")
     ptpe_psm_rows = [
         {
             "Body Zone": node.body_zone,
@@ -238,6 +238,83 @@ if coordinator and coordinator.psme_audit:
         "active nodes. Values below zero (Margin Sign: NEGATIVE) indicate the "
         "node's perceptual threshold has been exceeded by the estimated "
         "perceived error."
+    )
+    st.markdown("###### PT–PE–PSM Decomposition (per node)")
+    decomp_rows = []
+    for node in coordinator.registry.values():
+        if node.psm is None:
+            continue
+        pt = node.perceptual_threshold
+        pe = node.perceived_error
+        psm = node.psm
+        decomp_rows.append({
+            "Node": node.node_id,
+            "PT (ms)": pt,
+            "PE (ms)": pe,
+            "PSM (ms)": psm,
+            "PE Consumed": min(pe, pt),
+            "Remaining PSM": max(psm, 0.0),
+            "Exceeded": max(-psm, 0.0),
+        })
+    decomp_df = pd.DataFrame(decomp_rows).sort_values("PSM (ms)")
+    decomp_long = decomp_df.melt(
+        id_vars=["Node", "PT (ms)", "PE (ms)", "PSM (ms)"],
+        value_vars=["PE Consumed", "Remaining PSM", "Exceeded"],
+        var_name="Segment",
+        value_name="Milliseconds",
+    )
+    decomp_chart = (
+        alt.Chart(decomp_long)
+        .mark_bar()
+        .encode(
+            x=alt.X("Node:N", sort=list(decomp_df["Node"]), title="Node (sorted by PSM, ascending)"),
+            y=alt.Y("Milliseconds:Q", stack="zero", title="Milliseconds"),
+            color=alt.Color(
+                "Segment:N",
+                scale=alt.Scale(
+                    domain=["PE Consumed", "Remaining PSM", "Exceeded"],
+                    range=["#3B82F6", "#16A34A", "#DC2626"],
+                ),
+            ),
+            tooltip=["Node", "PT (ms)", "PE (ms)", "PSM (ms)", "Segment", "Milliseconds"],
+        )
+    )
+    st.altair_chart(decomp_chart, use_container_width=True)
+    st.caption(
+        "Per-node PT budget decomposition: blue is the perceived error consumed "
+        "against the threshold, green is the remaining PSM budget, and red (when "
+        "present) is the amount by which PE exceeds PT. Nodes are ordered by PSM "
+        "ascending so the smallest margins appear first; no synchronization state "
+        "is assigned here."
+    )
+
+    st.markdown("###### PSM Audit Table")
+    audit_table_rows = [
+        {
+            "Node": node.node_id,
+            "Zone": node.body_zone,
+            "PT (ms)": round(node.perceptual_threshold, 2),
+            "PE (ms)": round(node.perceived_error, 2),
+            "PSM (ms)": round(node.psm, 2),
+            "NPSM": round(node.normalized_psm, 4),
+            "Threshold Utilization (%)": round(node.threshold_utilization_pct, 2),
+            "Margin Sign": node.margin_sign,
+        }
+        for node in coordinator.registry.values()
+        if node.psm is not None
+    ]
+    audit_table_df = pd.DataFrame(audit_table_rows)
+    sort_ascending = st.checkbox(
+        "Sort ascending (smallest PSM first)", value=True, key="psm_audit_sort_asc"
+    )
+    audit_table_df = audit_table_df.sort_values("PSM (ms)", ascending=sort_ascending)
+    st.dataframe(audit_table_df, hide_index=True, use_container_width=True)
+    st.caption(
+        "Full per-node PSM audit trail (Node, Zone, PT, PE, PSM, NPSM, Threshold "
+        "Utilization, Margin Sign), sortable by PSM to surface the nodes with the "
+        "smallest remaining margin first. This table does not assign or imply any "
+        "Relaxed/Nominal/Elevated/Immediate synchronization state; that "
+        "classification belongs to the SCE (Sprint 8)."
     )
 else:
     st.markdown(
