@@ -18,6 +18,11 @@ from .packets import PSSP
 # logic and later trend visualizations.
 MAX_HISTORY_LENGTH = 100
 
+# Maximum number of recent (step, timestamp, state) samples retained per
+# node's synchronization-state history (Sprint 8 SCE). Kept separate from
+# MAX_HISTORY_LENGTH since it tracks classified states, not raw PT/PE/PSM.
+MAX_STATE_HISTORY_LENGTH = 50
+
 
 @dataclass
 class HapticNode:
@@ -46,7 +51,11 @@ class HapticNode:
     normalized_psm: Optional[float] = None       # NPSM
     threshold_utilization_pct: Optional[float] = None  # TU
     margin_sign: Optional[str] = None             # Margin Sign
-    sync_state: str = "Unclassified"              # State
+    sync_state: str = "Unclassified"        # Current State (SCE, Sprint 8)
+    previous_state: Optional[str] = None          # Previous State (SCE)
+    transition_flag: bool = False                 # Transition (SCE)
+    persistence_counter: int = 0                  # Persistence Counter (SCE)
+    pending_state: Optional[str] = None           # Internal SCE dwell-time bookkeeping
 
     # Telemetry counters (start at zero; updated once the time-series
     # simulation loop exists).
@@ -58,6 +67,11 @@ class HapticNode:
     # recent last. Bounded to MAX_HISTORY_LENGTH entries. Populated by the
     # Coordinator's run_psme_pass() each cycle a valid PSM is computed.
     history: list = field(default_factory=list)
+
+    # Rolling history of (step, timestamp, state) samples, most recent
+    # last. Bounded to MAX_STATE_HISTORY_LENGTH entries. Populated by the
+    # Coordinator's run_sce_pass() each cycle a state is classified.
+    state_history: list = field(default_factory=list)
 
     def to_pssp(self, packet_id: str, simulation_timestamp: float) -> PSSP:
         """Generate this node's current Perceptual Synchronization Status Packet."""
@@ -92,3 +106,21 @@ class HapticNode:
         })
         if len(self.history) > MAX_HISTORY_LENGTH:
             self.history = self.history[-MAX_HISTORY_LENGTH:]
+
+
+    def record_state_history(self, step: int, timestamp: float, state: str) -> None:
+        """Append one (step, timestamp, state) sample to this node's rolling
+        state-history buffer, discarding the oldest sample once the buffer
+        exceeds MAX_STATE_HISTORY_LENGTH entries (Sprint 8 Deliverable 8).
+
+        Pure bookkeeping only - does not itself decide the state; that is
+        the SCE's job (core/sce.py), called from the Coordinator's
+        run_sce_pass().
+        """
+        self.state_history.append({
+            "step": step,
+            "timestamp": timestamp,
+            "state": state,
+        })
+        if len(self.state_history) > MAX_STATE_HISTORY_LENGTH:
+            self.state_history = self.state_history[-MAX_STATE_HISTORY_LENGTH:]
