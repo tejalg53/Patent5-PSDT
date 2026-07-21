@@ -85,7 +85,7 @@ else:
     topology_html = '<div class="psdt-card">'
     for zone in ZONE_ORDER:
         count = len([n for n in nodes if n.body_zone == zone])
-        dots = " ".join(["\u25cf"] * count) if count else "\u2014"
+        dots = " ".join(["●"] * count) if count else "—"
         topology_html += (
             f'<div class="psdt-zone-label">{zone_display[zone]}</div>'
             f'<div class="psdt-zone-dots">{dots}</div>'
@@ -107,6 +107,12 @@ else:
         def fmt(value, suffix=""):
             return "Not computed" if value is None else f"{value}{suffix}"
 
+        sync_state_display = (
+            "Awaiting Sprint 8 classification"
+            if selected_node.sync_state == "Unclassified"
+            else selected_node.sync_state
+        )
+
         st.markdown(
             f"""
             <div class="psdt-card">
@@ -127,7 +133,7 @@ else:
             <p style="margin:0 0 0.4rem 0;"><b>NPSM</b><br>{fmt(round(selected_node.normalized_psm, 4) if selected_node.normalized_psm is not None else None)}</p>
             <p style="margin:0 0 0.4rem 0;"><b>Threshold Utilization</b><br>{fmt(round(selected_node.threshold_utilization_pct, 2) if selected_node.threshold_utilization_pct is not None else None, "%")}</p>
             <p style="margin:0 0 0.4rem 0;"><b>Margin Sign</b><br>{fmt(selected_node.margin_sign)}</p>
-            <p style="margin:0;"><b>State</b><br>{selected_node.sync_state}</p>
+            <p style="margin:0;"><b>State</b><br>{sync_state_display}</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -197,7 +203,13 @@ else:
 
         st.markdown("##### Perceptual Synchronization Margin")
         psme_result = coordinator.psme_audit.get(selected_id) if coordinator else None
-        if psme_result:
+        if psme_result and psme_result.status == "INVALID_INPUT":
+            st.markdown(
+                f'<div class="psdt-placeholder-box">PSME rejected this node\'s inputs: '
+                f'{psme_result.error_reason}</div>',
+                unsafe_allow_html=True,
+            )
+        elif psme_result:
             st.markdown(
                 f"""
                 <div class="psdt-card">
@@ -210,6 +222,65 @@ else:
                 </div>
                 """,
                 unsafe_allow_html=True,
+            )
+
+            st.markdown("###### PSM Gauge")
+            gauge_scale = max(psme_result.pt_ms, psme_result.pe_ms) * 1.15
+            pe_pct = min(100.0, (psme_result.pe_ms / gauge_scale) * 100.0)
+            pt_pct = min(100.0, (psme_result.pt_ms / gauge_scale) * 100.0)
+
+            if psme_result.psm_ms >= 0:
+                used_pct = pe_pct
+                margin_pct = max(0.0, pt_pct - pe_pct)
+                gauge_bar = (
+                    f'<div style="position:relative; height:26px; background:#1E293B; '
+                    f'border-radius:6px; overflow:hidden;">'
+                    f'<div style="position:absolute; left:0; top:0; height:100%; width:{used_pct:.2f}%; '
+                    f'background:#3B82F6;"></div>'
+                    f'<div style="position:absolute; left:{used_pct:.2f}%; top:0; height:100%; '
+                    f'width:{margin_pct:.2f}%; background:#16A34A;"></div>'
+                    f'<div style="position:absolute; left:{pt_pct:.2f}%; top:0; height:100%; '
+                    f'width:2px; background:#F8FAFC;"></div>'
+                    f'</div>'
+                )
+                legend = (
+                    f'<div style="display:flex; justify-content:space-between; font-size:0.72rem; '
+                    f'color:#94A3B8; margin-top:0.3rem;">'
+                    f'<span>0 ms</span>'
+                    f'<span style="color:#3B82F6;">used (PE): {psme_result.pe_ms:.2f} ms</span>'
+                    f'<span style="color:#16A34A;">margin (PSM): +{psme_result.psm_ms:.2f} ms</span>'
+                    f'<span>PT: {psme_result.pt_ms:.2f} ms</span>'
+                    f'</div>'
+                )
+            else:
+                exceeded_pct = max(0.0, pe_pct - pt_pct)
+                gauge_bar = (
+                    f'<div style="position:relative; height:26px; background:#1E293B; '
+                    f'border-radius:6px; overflow:hidden;">'
+                    f'<div style="position:absolute; left:0; top:0; height:100%; width:{pt_pct:.2f}%; '
+                    f'background:#3B82F6;"></div>'
+                    f'<div style="position:absolute; left:{pt_pct:.2f}%; top:0; height:100%; '
+                    f'width:{exceeded_pct:.2f}%; background:#DC2626;"></div>'
+                    f'<div style="position:absolute; left:{pt_pct:.2f}%; top:0; height:100%; '
+                    f'width:2px; background:#F8FAFC;"></div>'
+                    f'</div>'
+                )
+                legend = (
+                    f'<div style="display:flex; justify-content:space-between; font-size:0.72rem; '
+                    f'color:#94A3B8; margin-top:0.3rem;">'
+                    f'<span>0 ms</span>'
+                    f'<span>PT: {psme_result.pt_ms:.2f} ms</span>'
+                    f'<span style="color:#DC2626;">exceeded by {abs(psme_result.psm_ms):.2f} ms '
+                    f'(PE: {psme_result.pe_ms:.2f} ms)</span>'
+                    f'</div>'
+                )
+
+            st.markdown(f'<div class="psdt-card">{gauge_bar}{legend}</div>', unsafe_allow_html=True)
+            st.caption(
+                "Blue marks perceived error consumed against the threshold. Green marks the "
+                "remaining margin (PSM). Red marks the amount by which PE exceeds PT when the "
+                "margin is negative. The white tick marks PTz(t); this is a visual aid only and "
+                "assigns no synchronization state."
             )
         else:
             st.markdown(
@@ -246,62 +317,62 @@ else:
 
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
-    # -----------------------------------------------------------------
-    # DTCE audit table
-    # -----------------------------------------------------------------
-    st.subheader("DTCE Audit Table")
-    if coordinator and coordinator.dtce_audit:
-        audit_rows = [
-            {
-                "Node": nid,
-                "Zone": a.body_zone,
-                "Base PT (ms)": round(a.base_pt_ms, 2),
-                "Freq Factor": a.frequency_factor,
-                "Actuator Factor": a.actuator_factor,
-                "UCF": a.calibration_factor,
-                "Motion": a.motion_state,
-                "Motion Factor": a.motion_factor,
-                "Environment": a.environment_state,
-                "Env Factor": a.environment_factor,
-                "Dynamic PT (ms)": round(a.dynamic_pt_ms, 2),
-            }
-            for nid, a in coordinator.dtce_audit.items()
-        ]
-        st.dataframe(pd.DataFrame(audit_rows), hide_index=True, use_container_width=True)
-    else:
-        st.markdown(
-            '<div class="psdt-placeholder-box">Run a communication cycle to populate the DTCE audit table.</div>',
-            unsafe_allow_html=True,
-        )
+        # -----------------------------------------------------------------
+        # DTCE audit table
+        # -----------------------------------------------------------------
+        st.subheader("DTCE Audit Table")
+        if coordinator and coordinator.dtce_audit:
+            audit_rows = [
+                {
+                    "Node": nid,
+                    "Zone": a.body_zone,
+                    "Base PT (ms)": round(a.base_pt_ms, 2),
+                    "Freq Factor": a.frequency_factor,
+                    "Actuator Factor": a.actuator_factor,
+                    "UCF": a.calibration_factor,
+                    "Motion": a.motion_state,
+                    "Motion Factor": a.motion_factor,
+                    "Environment": a.environment_state,
+                    "Env Factor": a.environment_factor,
+                    "Dynamic PT (ms)": round(a.dynamic_pt_ms, 2),
+                }
+                for nid, a in coordinator.dtce_audit.items()
+            ]
+            st.dataframe(pd.DataFrame(audit_rows), hide_index=True, use_container_width=True)
+        else:
+            st.markdown(
+                '<div class="psdt-placeholder-box">Run a communication cycle to populate the DTCE audit table.</div>',
+                unsafe_allow_html=True,
+            )
 
-    # -----------------------------------------------------------------
-    # PEEE audit table
-    # -----------------------------------------------------------------
-    st.subheader("PEEE Audit Table")
-    if coordinator and coordinator.peee_audit:
-        peee_rows = [
-            {
-                "Node": nid,
-                "Zone": a.body_zone,
-                "CD (ms)": round(a.cd_ms, 2),
-                "ND (ms)": round(a.nd_ms, 2),
-                "AD (ms)": round(a.ad_ms, 2),
-                "MD (ms)": round(a.md_ms, 2),
-                "Model": a.model,
-                "W-CD": a.weight_cd,
-                "W-ND": a.weight_nd,
-                "W-AD": a.weight_ad,
-                "W-MD": a.weight_md,
-                "PE (ms)": round(a.perceived_error_ms, 2),
-            }
-            for nid, a in coordinator.peee_audit.items()
-        ]
-        st.dataframe(pd.DataFrame(peee_rows), hide_index=True, use_container_width=True)
-    else:
-        st.markdown(
-            '<div class="psdt-placeholder-box">Run a communication cycle to populate the PEEE audit table.</div>',
-            unsafe_allow_html=True,
-        )
+        # -----------------------------------------------------------------
+        # PEEE audit table
+        # -----------------------------------------------------------------
+        st.subheader("PEEE Audit Table")
+        if coordinator and coordinator.peee_audit:
+            peee_rows = [
+                {
+                    "Node": nid,
+                    "Zone": a.body_zone,
+                    "CD (ms)": round(a.cd_ms, 2),
+                    "ND (ms)": round(a.nd_ms, 2),
+                    "AD (ms)": round(a.ad_ms, 2),
+                    "MD (ms)": round(a.md_ms, 2),
+                    "Model": a.model,
+                    "W-CD": a.weight_cd,
+                    "W-ND": a.weight_nd,
+                    "W-AD": a.weight_ad,
+                    "W-MD": a.weight_md,
+                    "PE (ms)": round(a.perceived_error_ms, 2),
+                }
+                for nid, a in coordinator.peee_audit.items()
+            ]
+            st.dataframe(pd.DataFrame(peee_rows), hide_index=True, use_container_width=True)
+        else:
+            st.markdown(
+                '<div class="psdt-placeholder-box">Run a communication cycle to populate the PEEE audit table.</div>',
+                unsafe_allow_html=True,
+            )
 
     # -------------------------------------------------------------
     # Central Synchronization Coordinator
@@ -389,10 +460,10 @@ else:
                     "MD Weight", min_value=WEIGHT_BOUNDS[0], max_value=WEIGHT_BOUNDS[1],
                     value=DEFAULT_WEIGHTS["MD"], step=0.1, key="peee_w_md",
                 )
-            st.warning(
-                "Experimental coefficients are configurable simulation parameters and "
-                "should not be interpreted as universal physiological constants."
-            )
+        st.warning(
+            "Experimental coefficients are configurable simulation parameters and "
+            "should not be interpreted as universal physiological constants."
+        )
 
     recalculate_pe = st.button("Recalculate Perceived Error", use_container_width=True)
     if recalculate_pe:
@@ -415,7 +486,7 @@ else:
     if coordinator.log:
         recent = coordinator.log[-200:]
         lines = [
-            f"T={entry.timestamp:.2f} {entry.node_id} \u2192 Coordinator {entry.event}"
+            f"T={entry.timestamp:.2f} {entry.node_id} → Coordinator {entry.event}"
             for entry in reversed(recent)
         ]
         st.markdown(
@@ -468,11 +539,11 @@ else:
         f"""
         <div class="psdt-card">
         <div class="psdt-flow-label">WEARABLE NODES</div>
-        <div class="psdt-flow-arrow">\u2193 PSSP</div>
+        <div class="psdt-flow-arrow">↓ PSSP</div>
         <div class="psdt-flow-label">CENTRAL SYNCHRONIZATION COORDINATOR</div>
-        <div class="psdt-flow-arrow">\u2193</div>
+        <div class="psdt-flow-arrow">↓</div>
         <div style="text-align:center;">{chips_html}</div>
-        <div class="psdt-flow-arrow">\u2193 PRAP</div>
+        <div class="psdt-flow-arrow">↓ PRAP</div>
         <div class="psdt-flow-label">WEARABLE NODES</div>
         </div>
         """,
