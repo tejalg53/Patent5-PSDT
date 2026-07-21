@@ -113,6 +113,12 @@ else:
             else selected_node.sync_state
         )
 
+        previous_state_display = (
+            "None yet"
+            if selected_node.previous_state is None
+            else selected_node.previous_state
+        )
+
         st.markdown(
             f"""
             <div class="psdt-card">
@@ -133,11 +139,24 @@ else:
             <p style="margin:0 0 0.4rem 0;"><b>NPSM</b><br>{fmt(round(selected_node.normalized_psm, 4) if selected_node.normalized_psm is not None else None)}</p>
             <p style="margin:0 0 0.4rem 0;"><b>Threshold Utilization</b><br>{fmt(round(selected_node.threshold_utilization_pct, 2) if selected_node.threshold_utilization_pct is not None else None, "%")}</p>
             <p style="margin:0 0 0.4rem 0;"><b>Margin Sign</b><br>{fmt(selected_node.margin_sign)}</p>
-            <p style="margin:0;"><b>State</b><br>{sync_state_display}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Current State</b><br>{sync_state_display}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Previous State</b><br>{previous_state_display}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Transition</b><br>{"Yes" if selected_node.transition_flag else "No"}</p>
+            <p style="margin:0;"><b>Persistence Counter</b><br>{selected_node.persistence_counter}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
+
+        with st.expander("State History (last cycles)"):
+            if selected_node.state_history:
+                hist_df = pd.DataFrame(selected_node.state_history[-10:])
+                st.dataframe(hist_df, hide_index=True, use_container_width=True)
+            else:
+                st.markdown(
+                    '<div class="psdt-placeholder-box">No state history yet - run a communication cycle.</div>',
+                    unsafe_allow_html=True,
+                )
 
         st.markdown("##### Dynamic Threshold Characterization")
         audit = coordinator.dtce_audit.get(selected_id) if coordinator else None
@@ -310,6 +329,9 @@ else:
                 "Margin Sign": n.margin_sign,
                 "Battery (%)": n.battery_level,
                 "State": n.sync_state,
+                "Previous State": n.previous_state,
+                "Transition": n.transition_flag,
+                "Persistence": n.persistence_counter,
             }
             for n in nodes
             if n.body_zone in zone_filter
