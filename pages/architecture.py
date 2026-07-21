@@ -11,7 +11,7 @@ st.markdown(
 MODULE_KEYS = ["DTCE", "PEEE", "PSME", "SCE", "ARAC"]
 PLACEHOLDER = "(To be added)"
 
-IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME", "SCE"}
+IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME", "SCE", "ARAC"}
 
 MODULE_INFO = {
     "DTCE": {
@@ -49,6 +49,20 @@ MODULE_INFO = {
                   "updated rolling State History, with hysteresis and dwell-time "
                   "persistence preventing rapid oscillation near a boundary",
         "equation": "State = f(NPSM, boundaries, hysteresis, dwell-time)",
+        "patent_section": PLACEHOLDER,
+    },
+    "ARAC": {
+        "purpose": "Dynamically adapts each node's synchronization-related technical "
+                   "resources - synchronization interval, beacon interval, radio "
+                   "wake-up interval, transmit power, and trigger-timing offset - "
+                   "based on the state assigned by the SCE, closing the patent's "
+                   "control loop back to the wearable nodes.",
+        "input": "Current State (from SCE), body zone, and the node's mechanical/"
+                 "actuator-driver delays for trigger-offset compensation",
+        "output": "Synchronization Interval, Beacon Frequency, Radio Wake-up "
+                  "Schedule, Trigger Offset, and Transmit Power, delivered to the "
+                  "node as a PRAP (Perceptual Resource Allocation Packet)",
+        "equation": "Resources = f(State, BodyZone, MechanicalDelay)",
         "patent_section": PLACEHOLDER,
     },
 }
@@ -147,6 +161,24 @@ if selected:
             <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUTS</p>
             <p style="margin:0;">Current State &nbsp;|&nbsp; Transition &nbsp;|&nbsp;
             Persistence &nbsp;|&nbsp; State History</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif selected == "ARAC":
+        st.markdown(
+            """
+            <div class="psdt-card" style="text-align:center; margin-top:1rem;">
+            <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
+            <p style="margin:0 0 0.7rem 0;">Current State &nbsp;|&nbsp; Body Zone &nbsp;|&nbsp;
+            Mechanical/Driver Delay</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0 0 0.7rem 0;">Adaptive Resource Allocation Controller</p>
+            <p style="margin:0 0 0.5rem 0; font-family:monospace;">Resources = f(State, BodyZone, MechanicalDelay)</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUTS</p>
+            <p style="margin:0;">Sync Interval &nbsp;|&nbsp; Beacon Frequency &nbsp;|&nbsp;
+            Wake-up Schedule &nbsp;|&nbsp; Trigger Offset &nbsp;|&nbsp; Transmit Power</p>
             </div>
             """,
             unsafe_allow_html=True,
