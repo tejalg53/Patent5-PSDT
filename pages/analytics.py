@@ -36,6 +36,10 @@ import pandas as pd
 import altair as alt
 from core.constants import ZONE_ORDER
 from core.sce import STATE_ORDER as SCE_STATE_ORDER
+from config.resource_profiles import (
+    ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL,
+    FIXED_BASELINE_TRANSMIT_POWER_LEVEL,
+)
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("Dynamic Perceptual Threshold by Body Zone")
@@ -430,5 +434,126 @@ else:
     st.markdown(
         '<div class="psdt-placeholder-box">Run a communication cycle on the '
         'Simulation page to populate Synchronization State analytics.</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------------------
+# Sprint 9: Resource Allocation Analytics (ARAC) - Deliverables 13, 15,
+# 16, 17, 18.
+# ---------------------------------------------------------------------
+st.subheader("Resource Allocation Analytics")
+
+if coordinator and coordinator.arac_audit:
+    adaptive_nodes = [n for n in coordinator.registry.values() if n.resource_status == "Adaptive"]
+
+    st.markdown("###### Average Resource Allocation")
+    avg_sync = sum(n.allocated_sync_interval_ms for n in adaptive_nodes) / len(adaptive_nodes)
+    avg_beacon = sum(n.allocated_beacon_interval_ms for n in adaptive_nodes) / len(adaptive_nodes)
+    avg_wakeup = sum(n.allocated_radio_wakeup_interval_ms for n in adaptive_nodes) / len(adaptive_nodes)
+    avg_power = sum(n.allocated_transmit_power_pct for n in adaptive_nodes) / len(adaptive_nodes)
+    avg_cols = st.columns(4)
+    avg_cols[0].metric("Avg Sync Interval", f"{avg_sync:.0f} ms")
+    avg_cols[1].metric("Avg Beacon Frequency", f"{avg_beacon:.0f} ms")
+    avg_cols[2].metric("Avg Transmit Power", f"{avg_power:.0f} %")
+    avg_cols[3].metric("Avg Wake-up Time", f"{avg_wakeup:.0f} ms")
+
+    st.markdown("###### Body Zone Resource Allocation")
+    zone_avg_rows = [
+        {
+            "Body Zone": zone,
+            "Avg Sync Interval (ms)": sum(
+                n.allocated_sync_interval_ms for n in adaptive_nodes if n.body_zone == zone
+            ) / max(1, sum(1 for n in adaptive_nodes if n.body_zone == zone)),
+        }
+        for zone in ZONE_ORDER
+        if any(n.body_zone == zone for n in adaptive_nodes)
+    ]
+    if zone_avg_rows:
+        zone_avg_df = pd.DataFrame(zone_avg_rows)
+        zone_avg_chart = (
+            alt.Chart(zone_avg_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("Avg Sync Interval (ms):Q"),
+                y=alt.Y("Body Zone:N", sort=ZONE_ORDER),
+                tooltip=["Body Zone", "Avg Sync Interval (ms)"],
+            )
+        )
+        st.altair_chart(zone_avg_chart, use_container_width=True)
+        st.caption(
+            "Average ARAC-allocated synchronization interval per body zone, "
+            "demonstrating differentiated resource allocation across anatomical "
+            "regions (Sprint 9 Deliverable 17)."
+        )
+
+    st.markdown("###### Resource Parameter Timeline")
+    timeline_node_id = st.selectbox(
+        "Select node for resource timeline",
+        [n.node_id for n in adaptive_nodes],
+        key="resource_timeline_node",
+    )
+    timeline_node = coordinator.registry[timeline_node_id]
+    if timeline_node.resource_history:
+        tl_df = pd.DataFrame(timeline_node.resource_history)
+        tl_chart = (
+            alt.Chart(tl_df)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("timestamp:Q", title="Simulation Time (s)"),
+                y=alt.Y("sync_interval_ms:Q", title="Sync Interval (ms)"),
+                tooltip=["step", "timestamp", "sync_interval_ms", "beacon_interval_ms", "transmit_power_pct"],
+            )
+        )
+        st.altair_chart(tl_chart, use_container_width=True)
+        st.caption(
+            "Synchronization-interval evolution over time for the selected node, "
+            "showing ARAC re-allocating resources as the node's state changes "
+            "(Sprint 9 Deliverable 18)."
+        )
+    else:
+        st.markdown(
+            '<div class="psdt-placeholder-box">No resource history yet for this node.</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("###### Estimated Energy & Communication Statistics")
+    counts = coordinator.get_packet_counts()
+    total_radio_active = sum(n.radio_active_time for n in coordinator.registry.values())
+    total_energy = sum(n.energy_consumed for n in coordinator.registry.values())
+    fixed_energy_estimate = total_radio_active * ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL[FIXED_BASELINE_TRANSMIT_POWER_LEVEL]
+    saving_pct = (
+        (fixed_energy_estimate - total_energy) / fixed_energy_estimate * 100.0
+        if fixed_energy_estimate
+        else 0.0
+    )
+    sim_time = st.session_state.get("dt_sim_time", 0.0)
+    beacon_count_est = sum(
+        sim_time / (n.allocated_beacon_interval_ms / 1000.0)
+        for n in adaptive_nodes
+        if n.allocated_beacon_interval_ms
+    )
+
+    energy_cols = st.columns(4)
+    energy_cols[0].metric("Radio Active Time", f"{total_radio_active:.2f} s")
+    energy_cols[1].metric("Estimated Battery Consumption", f"{total_energy:.3f} J")
+    energy_cols[2].metric("Estimated Energy Saving", f"{saving_pct:.1f} %")
+    energy_cols[3].metric("Synchronization Packets", counts["received"])
+
+    comm_cols = st.columns(3)
+    comm_cols[0].metric("Beacon Count (est.)", f"{beacon_count_est:.0f}")
+    comm_cols[1].metric("Control Packets (PRAP)", coordinator.prap_generated)
+    comm_cols[2].metric("Resource Updates", coordinator.prap_generated)
+    st.caption(
+        "Radio active time, battery consumption, and energy saving are estimated "
+        "values derived from the simulation model (allocated wake-up interval and "
+        "transmit power), not direct hardware measurements (Sprint 9 Deliverable "
+        "15). In this simulator, PRAP packets serve as both the control-packet and "
+        "resource-update mechanism (Sprint 9 Deliverable 16)."
+    )
+else:
+    st.markdown(
+        '<div class="psdt-placeholder-box">Run a communication cycle on the '
+        'Simulation page to populate Resource Allocation analytics.</div>',
         unsafe_allow_html=True,
     )
