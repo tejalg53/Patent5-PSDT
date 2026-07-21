@@ -258,6 +258,7 @@ class CentralSynchronizationCoordinator:
             node.perceived_error = audit.perceived_error_ms
         self.run_psme_pass()
         return self.peee_audit
+
     def run_psme_pass(self):
         """Run the Perceptual Synchronization Margin Engine for every
         registered node that already has both a Dynamic Perceptual
@@ -265,16 +266,38 @@ class CentralSynchronizationCoordinator:
         PEz(t) (from PEEE). Stores a full audit trail per node and writes
         PSM/NPSM/Threshold Utilization/Margin Sign back onto the node
         itself. Nodes missing PT or PE are left uncomputed (None) rather
-        than faked. Returns the psme_audit dict (node_id -> PSMResult).
+        than faked.
+
+        Uses the PSME's boundary-safe entry point (safe_compute_margin)
+        so a single malformed node (PT<=0, NaN/Infinity, non-numeric,
+        negative PE, etc.) can never raise out of a simulation cycle and
+        take the whole Coordinator down with it. An invalid result is
+        stored with status="INVALID_INPUT" and the event is logged to
+        the communication log; that node's PT/PE are left untouched and
+        its previously computed PSM/NPSM/TU/Margin Sign are not reset to
+        fabricated values. Returns the psme_audit dict (node_id -> PSMResult).
         """
         for node_id, node in self.registry.items():
             if node.perceptual_threshold is None or node.perceived_error is None:
                 continue
-            result = self.psme.compute_margin(
+            result = self.psme.safe_compute_margin(
                 pt_ms=node.perceptual_threshold,
                 pe_ms=node.perceived_error,
+                node_id=node_id,
             )
             self.psme_audit[node_id] = result
+
+            if result.status == "INVALID_INPUT":
+                self.log.append(
+                    CommunicationLogEntry(
+                        timestamp=self._last_timestamp,
+                        node_id=node_id,
+                        event=f"PSME rejected invalid input: {result.error_reason}",
+                        packet_id=None,
+                    )
+                )
+                continue
+
             node.psm = result.psm_ms
             node.normalized_psm = result.normalized_psm
             node.threshold_utilization_pct = result.threshold_utilization_pct
