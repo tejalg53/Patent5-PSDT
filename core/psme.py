@@ -6,7 +6,7 @@ from two already-computed upstream quantities:
 
     PTz(t) - Dynamic Perceptual Threshold, produced by the DTCE (Sprint 5)
     PEz(t) - Estimated Perceived Synchronization Error, produced by
-    the PEEE (Sprint 6)
+             the PEEE (Sprint 6)
 
     PSMz(t) = PTz(t) - PEz(t)
     NPSMz(t) = PSMz(t) / PTz(t)
@@ -20,19 +20,27 @@ the responsibility of a later sprint's SCE).
 """
 
 from dataclasses import dataclass
+from typing import Optional
 import math
 
 
 @dataclass(frozen=True)
 class PSMResult:
-    """Full, human-readable audit trail for one PSMz(t) computation."""
+    """Full, human-readable audit trail for one PSMz(t) computation.
 
-    pt_ms: float
-    pe_ms: float
-    psm_ms: float
-    normalized_psm: float
-    threshold_utilization_pct: float
-    margin_sign: str
+    `status` is "OK" for a normal computation, or "INVALID_INPUT" when
+    safe_compute_margin() had to reject malformed input without raising.
+    All numeric fields are None on an INVALID_INPUT result.
+    """
+
+    pt_ms: Optional[float]
+    pe_ms: Optional[float]
+    psm_ms: Optional[float]
+    normalized_psm: Optional[float]
+    threshold_utilization_pct: Optional[float]
+    margin_sign: Optional[str]
+    status: str = "OK"
+    error_reason: Optional[str] = None
 
 
 class PerceptualSynchronizationMarginEngine:
@@ -47,11 +55,21 @@ class PerceptualSynchronizationMarginEngine:
     EPSILON = 1e-9
 
     def compute_margin(self, pt_ms, pe_ms):
+        """Strict computation. Raises ValueError on any invalid input.
+
+        Use this when the caller has already guaranteed valid upstream
+        PT/PE (e.g. unit tests exercising the pure equation). Pipeline
+        / integration code that must never crash on malformed input
+        should call safe_compute_margin() instead.
+        """
         if pt_ms is None or pe_ms is None:
             raise ValueError("PT and PE are required.")
 
-        pt_ms = float(pt_ms)
-        pe_ms = float(pe_ms)
+        try:
+            pt_ms = float(pt_ms)
+            pe_ms = float(pe_ms)
+        except (TypeError, ValueError):
+            raise ValueError("PT and PE must be numeric.")
 
         if not math.isfinite(pt_ms) or not math.isfinite(pe_ms):
             raise ValueError("PT and PE must be finite.")
@@ -80,4 +98,30 @@ class PerceptualSynchronizationMarginEngine:
             normalized_psm=normalized_psm,
             threshold_utilization_pct=threshold_utilization_pct,
             margin_sign=margin_sign,
+            status="OK",
+            error_reason=None,
         )
+
+    def safe_compute_margin(self, pt_ms, pe_ms, node_id=None):
+        """Boundary-safe wrapper around compute_margin().
+
+        Never raises. On invalid input (None, PT<=0, NaN/Infinity,
+        non-numeric types, negative PE) it returns a PSMResult with
+        status="INVALID_INPUT", error_reason set, and every numeric
+        field set to None rather than a fabricated number. Intended
+        for use by the Coordinator's pipeline so one malformed node
+        can never crash a whole simulation cycle.
+        """
+        try:
+            return self.compute_margin(pt_ms, pe_ms)
+        except ValueError as exc:
+            return PSMResult(
+                pt_ms=None,
+                pe_ms=None,
+                psm_ms=None,
+                normalized_psm=None,
+                threshold_utilization_pct=None,
+                margin_sign=None,
+                status="INVALID_INPUT",
+                error_reason=str(exc),
+            )
