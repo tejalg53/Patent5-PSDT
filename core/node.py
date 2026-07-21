@@ -7,10 +7,16 @@ Synchronization Margin) are intentionally left uncomputed (None) here.
 Those are produced by dedicated engines in later sprints, not faked here.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from .packets import PSSP
+
+# Maximum number of recent (step, PT, PE, PSM) samples retained per node.
+# A bounded rolling buffer keeps memory flat for long-running simulations
+# while still giving Sprint 8+ enough history for dwell-time/hysteresis
+# logic and later trend visualizations.
+MAX_HISTORY_LENGTH = 100
 
 
 @dataclass
@@ -48,6 +54,11 @@ class HapticNode:
     radio_active_time: float = 0.0  # seconds
     energy_consumed: float = 0.0    # joules
 
+    # Rolling history of (step, timestamp, PT, PE, PSM) samples, most
+    # recent last. Bounded to MAX_HISTORY_LENGTH entries. Populated by the
+    # Coordinator's run_psme_pass() each cycle a valid PSM is computed.
+    history: list = field(default_factory=list)
+
     def to_pssp(self, packet_id: str, simulation_timestamp: float) -> PSSP:
         """Generate this node's current Perceptual Synchronization Status Packet."""
         return PSSP(
@@ -62,3 +73,22 @@ class HapticNode:
             battery_percent=self.battery_level,
             current_state=self.sync_state,
         )
+
+    def record_history_point(self, step: int, timestamp: float, pt: float, pe: float, psm: float) -> None:
+        """Append one (step, timestamp, PT, PE, PSM) sample to this node's
+        rolling history buffer, discarding the oldest sample once the
+        buffer exceeds MAX_HISTORY_LENGTH entries.
+
+        This is pure bookkeeping - it does not classify or interpret the
+        sample. Sprint 8 uses this for dwell-time/hysteresis; Sprint 10
+        for trend animation; Sprint 11 for experimental graphs.
+        """
+        self.history.append({
+            "step": step,
+            "timestamp": timestamp,
+            "PT": pt,
+            "PE": pe,
+            "PSM": psm,
+        })
+        if len(self.history) > MAX_HISTORY_LENGTH:
+            self.history = self.history[-MAX_HISTORY_LENGTH:]
