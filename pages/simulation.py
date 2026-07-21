@@ -158,6 +158,31 @@ else:
                     unsafe_allow_html=True,
                 )
 
+        st.markdown("##### Resource Allocation (ARAC)")
+        st.markdown(
+            f"""
+            <div class="psdt-card">
+            <p style="margin:0 0 0.4rem 0;"><b>Status</b><br>{selected_node.resource_status}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Sync Interval</b><br>{fmt(selected_node.allocated_sync_interval_ms, " ms")}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Beacon Interval</b><br>{fmt(selected_node.allocated_beacon_interval_ms, " ms")}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Radio Wake-up Interval</b><br>{fmt(selected_node.allocated_radio_wakeup_interval_ms, " ms")}</p>
+            <p style="margin:0 0 0.4rem 0;"><b>Transmit Power</b><br>{fmt(selected_node.allocated_transmit_power_level)} ({fmt(selected_node.allocated_transmit_power_pct, "%")})</p>
+            <p style="margin:0;"><b>Trigger Offset</b><br>{fmt(selected_node.allocated_trigger_offset_ms, " ms")}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        with st.expander("Resource History (last cycles)"):
+            if selected_node.resource_history:
+                res_hist_df = pd.DataFrame(selected_node.resource_history[-10:])
+                st.dataframe(res_hist_df, hide_index=True, use_container_width=True)
+            else:
+                st.markdown(
+                    '<div class="psdt-placeholder-box">No resource history yet - run a communication cycle.</div>',
+                    unsafe_allow_html=True,
+                )
+
         st.markdown("##### Dynamic Threshold Characterization")
         audit = coordinator.dtce_audit.get(selected_id) if coordinator else None
         if audit:
@@ -332,6 +357,12 @@ else:
                 "Previous State": n.previous_state,
                 "Transition": n.transition_flag,
                 "Persistence": n.persistence_counter,
+                "Resource Status": n.resource_status,
+                "Sync Interval (ms)": n.allocated_sync_interval_ms,
+                "Beacon (ms)": n.allocated_beacon_interval_ms,
+                "Wake-up (ms)": n.allocated_radio_wakeup_interval_ms,
+                "TX Power": n.allocated_transmit_power_level,
+                "Trigger Offset (ms)": n.allocated_trigger_offset_ms,
             }
             for n in nodes
             if n.body_zone in zone_filter
@@ -393,6 +424,32 @@ else:
         else:
             st.markdown(
                 '<div class="psdt-placeholder-box">Run a communication cycle to populate the PEEE audit table.</div>',
+                unsafe_allow_html=True,
+            )
+
+        # -------------------------------------------------------------
+        # ARAC audit table
+        # -------------------------------------------------------------
+        st.subheader("ARAC Audit Table")
+        if coordinator and coordinator.arac_audit:
+            arac_rows = [
+                {
+                    "Node": nid,
+                    "Zone": coordinator.registry[nid].body_zone,
+                    "State": r.target_state,
+                    "Sync Interval (ms)": r.sync_interval_ms,
+                    "Beacon (ms)": r.beacon_interval_ms,
+                    "Wake-up (ms)": r.radio_wakeup_interval_ms,
+                    "TX Power": r.transmit_power_level,
+                    "Trigger Offset (ms)": r.trigger_timing_offset_ms,
+                    "Status": r.status,
+                }
+                for nid, r in coordinator.arac_audit.items()
+            ]
+            st.dataframe(pd.DataFrame(arac_rows), hide_index=True, use_container_width=True)
+        else:
+            st.markdown(
+                '<div class="psdt-placeholder-box">Run a communication cycle to populate the ARAC audit table.</div>',
                 unsafe_allow_html=True,
             )
 
