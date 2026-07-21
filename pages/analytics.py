@@ -35,6 +35,7 @@ for col, (icon, label) in zip(cols, cards):
 import pandas as pd
 import altair as alt
 from core.constants import ZONE_ORDER
+from core.sce import STATE_ORDER as SCE_STATE_ORDER
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("Dynamic Perceptual Threshold by Body Zone")
@@ -299,6 +300,10 @@ if coordinator and coordinator.psme_audit:
             "NPSM": round(node.normalized_psm, 4),
             "Threshold Utilization (%)": round(node.threshold_utilization_pct, 2),
             "Margin Sign": node.margin_sign,
+            "State": node.sync_state,
+            "Previous State": node.previous_state,
+            "Transition": node.transition_flag,
+            "Persistence": node.persistence_counter,
         }
         for node in coordinator.registry.values()
         if node.psm is not None
@@ -311,15 +316,119 @@ if coordinator and coordinator.psme_audit:
     st.dataframe(audit_table_df, hide_index=True, use_container_width=True)
     st.caption(
         "Full per-node PSM audit trail (Node, Zone, PT, PE, PSM, NPSM, Threshold "
-        "Utilization, Margin Sign), sortable by PSM to surface the nodes with the "
-        "smallest remaining margin first. This table does not assign or imply any "
-        "Relaxed/Nominal/Elevated/Immediate synchronization state; that "
-        "classification belongs to the SCE (Sprint 8)."
+        "Utilization, Margin Sign, State, Previous State, Transition, Persistence), "
+        "sortable by any column (click a column header) to surface the nodes with "
+        "the smallest remaining margin first. State/Previous State/Transition/"
+        "Persistence are produced by the SCE (Sprint 8) from NPSM, with hysteresis "
+        "and dwell-time persistence preventing rapid oscillation near a boundary."
     )
 else:
     st.markdown(
         '<div class="psdt-placeholder-box">Run a communication cycle on the '
         'Simulation page to populate Perceptual Synchronization Margin '
         'analytics.</div>',
+        unsafe_allow_html=True,
+    )
+
+# ---------------------------------------------------------------------
+# Sprint 8: Synchronization Classification Engine (SCE) analytics. State
+# values are read directly from each node's sync_state/state_history -
+# never re-derived here. Classification itself lives in core/sce.py.
+# ---------------------------------------------------------------------
+st.markdown("<br>", unsafe_allow_html=True)
+st.subheader("Synchronization State Analytics")
+
+if coordinator and coordinator.sce_audit:
+    classified_nodes = [n for n in coordinator.registry.values() if n.sync_state != "Unclassified"]
+
+    st.markdown("###### Current State Distribution")
+    state_counts_rows = [
+        {"State": s, "Node Count": sum(1 for n in classified_nodes if n.sync_state == s)}
+        for s in SCE_STATE_ORDER
+    ]
+    state_counts_df = pd.DataFrame(state_counts_rows)
+    state_dist_chart = (
+        alt.Chart(state_counts_df)
+        .mark_bar()
+        .encode(
+            x=alt.X("Node Count:Q"),
+            y=alt.Y("State:N", sort=SCE_STATE_ORDER),
+            color=alt.Color(
+                "State:N",
+                scale=alt.Scale(
+                    domain=SCE_STATE_ORDER,
+                    range=["#DC2626", "#F59E0B", "#3B82F6", "#16A34A"],
+                ),
+                legend=None,
+            ),
+            tooltip=["State", "Node Count"],
+        )
+    )
+    st.altair_chart(state_dist_chart, use_container_width=True)
+    st.caption(
+        "Count of active nodes currently classified into each of the four "
+        "locked synchronization states (IMMEDIATE, ELEVATED, NOMINAL, RELAXED) "
+        "by the SCE."
+    )
+
+    st.markdown("###### State Distribution by Body Zone")
+    zone_state_rows = [
+        {"Body Zone": zone, "State": s,
+         "Node Count": sum(1 for n in classified_nodes if n.body_zone == zone and n.sync_state == s)}
+        for zone in ZONE_ORDER
+        for s in SCE_STATE_ORDER
+    ]
+    zone_state_df = pd.DataFrame(zone_state_rows)
+    zone_state_chart = (
+        alt.Chart(zone_state_df)
+        .mark_bar()
+        .encode(
+            x=alt.X("Body Zone:N", sort=ZONE_ORDER),
+            y=alt.Y("Node Count:Q"),
+            color=alt.Color(
+                "State:N",
+                scale=alt.Scale(
+                    domain=SCE_STATE_ORDER,
+                    range=["#DC2626", "#F59E0B", "#3B82F6", "#16A34A"],
+                ),
+            ),
+            tooltip=["Body Zone", "State", "Node Count"],
+        )
+    )
+    st.altair_chart(zone_state_chart, use_container_width=True)
+    st.caption(
+        "Synchronization state breakdown per body zone, so a zone with a "
+        "disproportionate share of ELEVATED/IMMEDIATE nodes stands out."
+    )
+
+    st.markdown("###### State Timeline (selected node)")
+    timeline_candidates = [n.node_id for n in coordinator.registry.values() if n.state_history]
+    if timeline_candidates:
+        timeline_node_id = st.selectbox("Select node for state timeline", timeline_candidates)
+        timeline_node = coordinator.registry[timeline_node_id]
+        timeline_df = pd.DataFrame(timeline_node.state_history)
+        timeline_chart = (
+            alt.Chart(timeline_df)
+            .mark_line(point=True, interpolate="step-after")
+            .encode(
+                x=alt.X("step:Q", title="Simulation Cycle"),
+                y=alt.Y("state:N", sort=SCE_STATE_ORDER, title="State"),
+                tooltip=["step", "timestamp", "state"],
+            )
+        )
+        st.altair_chart(timeline_chart, use_container_width=True)
+        st.caption(
+            f"Synchronization state evolution for {timeline_node_id} over its "
+            "rolling state_history buffer (most recent cycles)."
+        )
+    else:
+        st.markdown(
+            '<div class="psdt-placeholder-box">Run more communication cycles to build up state history.</div>',
+            unsafe_allow_html=True,
+        )
+else:
+    st.markdown(
+        '<div class="psdt-placeholder-box">Run a communication cycle on the '
+        'Simulation page to populate Synchronization State analytics.</div>',
         unsafe_allow_html=True,
     )
