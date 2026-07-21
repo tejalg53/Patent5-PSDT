@@ -11,7 +11,7 @@ st.markdown(
 MODULE_KEYS = ["DTCE", "PEEE", "PSME", "SCE", "ARAC"]
 PLACEHOLDER = "(To be added)"
 
-IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME"}
+IMPLEMENTED_MODULES = {"DTCE", "PEEE", "PSME", "SCE"}
 
 MODULE_INFO = {
     "DTCE": {
@@ -36,6 +36,19 @@ MODULE_INFO = {
                   "Threshold Utilization, and Margin Sign (Positive / Boundary / "
                   "Negative), with a full auditable trail per node",
         "equation": "PSMz(t) = PTz(t) - PEz(t)",
+        "patent_section": PLACEHOLDER,
+    },
+    "SCE": {
+        "purpose": "Classifies every active wearable node into one of four locked "
+                   "synchronization states (Relaxed / Nominal / Elevated / Immediate) "
+                   "based on its current Normalized PSM. It is a finite-state control "
+                   "machine only - it assigns no resource-allocation values.",
+        "input": "Normalized PSM (from PSME), the node's previous state, pending "
+                 "candidate state, and persistence counter",
+        "output": "Current State, Transition flag, Persistence Counter, and an "
+                  "updated rolling State History, with hysteresis and dwell-time "
+                  "persistence preventing rapid oscillation near a boundary",
+        "equation": "State = f(NPSM, boundaries, hysteresis, dwell-time)",
         "patent_section": PLACEHOLDER,
     },
 }
@@ -117,6 +130,23 @@ if selected:
             <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUTS</p>
             <p style="margin:0;">Raw PSM &nbsp;|&nbsp; Normalized PSM &nbsp;|&nbsp;
             Threshold Utilization &nbsp;|&nbsp; Margin Sign</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif selected == "SCE":
+        st.markdown(
+            """
+            <div class="psdt-card" style="text-align:center; margin-top:1rem;">
+            <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
+            <p style="margin:0 0 0.7rem 0;">PTz(t) &nbsp;|&nbsp; PEz(t) &nbsp;|&nbsp; PSMz(t)</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0 0 0.7rem 0;">Synchronization Classification Engine</p>
+            <p style="margin:0 0 0.5rem 0; font-family:monospace;">State = f(NPSM, boundaries, hysteresis, dwell-time)</p>
+            <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+            <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUTS</p>
+            <p style="margin:0;">Current State &nbsp;|&nbsp; Transition &nbsp;|&nbsp;
+            Persistence &nbsp;|&nbsp; State History</p>
             </div>
             """,
             unsafe_allow_html=True,
