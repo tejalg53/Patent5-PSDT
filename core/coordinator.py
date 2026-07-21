@@ -5,6 +5,10 @@ Sprint 6 - adds the PEEE pass (Estimated Perceived Error PEz(t)).
 Sprint 7 - adds the PSME pass (Perceptual Synchronization Margin PSMz(t))
            and seeds a rolling PT/PE/PSM history buffer per node for
            Sprint 8+ (hysteresis/dwell-time, trend animation, graphs).
+Sprint 8 - adds the SCE pass (Synchronization Classification Engine):
+           classifies each node into RELAXED/NOMINAL/ELEVATED/IMMEDIATE
+           from its NPSM, with hysteresis and dwell-time persistence, and
+           maintains a rolling state_history buffer per node.
 
 Responsible for:
 - registering wearable nodes into a registry indexed by Node ID and zone
@@ -14,11 +18,12 @@ Responsible for:
 - maintaining packet/event counters
 - preparing (placeholder, non-adaptive) resource-allocation commands (PRAP)
 - logging synchronization communication
-- running DTCE (PTz(t)), PEEE (PEz(t)) and PSME (PSMz(t)) for every registered node
+- running DTCE (PTz(t)), PEEE (PEz(t)), PSME (PSMz(t)) and SCE (state
+  classification) for every registered node
 
-The SCE / ARAC engines are represented here only as named placeholders
-in the processing pipeline. They are implemented in later sprints (8-9)
-and must not be faked in this sprint.
+The ARAC engine is represented here only as a named placeholder in the
+processing pipeline. It is implemented in Sprint 9 and must not be
+faked in this sprint. SCE (Sprint 8) is now fully implemented above.
 """
 
 from dataclasses import dataclass
@@ -28,6 +33,7 @@ from .packets import PSSP, PRAP
 from .dtce import DynamicThresholdCharacterizationEngine, DTCEAudit
 from .peee import PerceivedErrorEstimationEngine, PEEEAudit
 from .psme import PerceptualSynchronizationMarginEngine, PSMResult
+from .sce import SynchronizationClassificationEngine, SCEResult
 from .error_profiles import DEFAULT_PE_MODEL, DEFAULT_WEIGHTS, DEFAULT_NETWORK_CONDITION
 
 PIPELINE_STAGES = [
@@ -76,6 +82,8 @@ class CentralSynchronizationCoordinator:
         }
         self.psme = PerceptualSynchronizationMarginEngine()
         self.psme_audit: Dict[str, PSMResult] = {}
+        self.sce = SynchronizationClassificationEngine()
+        self.sce_audit: Dict[str, SCEResult] = {}
         self._last_timestamp = 0.0
 
         self.packets_generated = 0
@@ -175,6 +183,7 @@ class CentralSynchronizationCoordinator:
         self.run_dtce_pass()
         self.run_peee_pass()
         self.run_psme_pass()
+        self.run_sce_pass()
 
         return entries
 
@@ -316,6 +325,61 @@ class CentralSynchronizationCoordinator:
                 psm=node.psm,
             )
         return self.psme_audit
+
+    def run_sce_pass(self):
+        """Run the Synchronization Classification Engine for every node
+        that already has a valid Normalized PSM (from PSME). Classifies
+        each node into RELAXED/NOMINAL/ELEVATED/IMMEDIATE using NPSM,
+        with hysteresis and dwell-time persistence so nodes do not
+        oscillate between states on small fluctuations. Writes Current
+        State, Previous State, Transition, and Persistence Counter back
+        onto the node, and appends to its rolling state_history buffer.
+        Nodes missing a valid NPSM are left unclassified rather than
+        faked.
+
+        Uses the SCE's boundary-safe entry point (safe_classify) so a
+        single malformed node can never raise out of a simulation cycle
+        and take the whole Coordinator down with it. An invalid result
+        is stored with status="INVALID_INPUT" and the event is logged
+        to the communication log; that node's classification fields are
+        left untouched rather than reset to fabricated values. Returns
+        the sce_audit dict (node_id -> SCEResult).
+        """
+        for node_id, node in self.registry.items():
+            if node.normalized_psm is None:
+                continue
+
+            previous_state = node.sync_state if node.sync_state != "Unclassified" else None
+            result = self.sce.safe_classify(
+                npsm=node.normalized_psm,
+                previous_state=previous_state,
+                pending_state=node.pending_state,
+                persistence_counter=node.persistence_counter,
+            )
+            self.sce_audit[node_id] = result
+
+            if result.status == "INVALID_INPUT":
+                self.log.append(
+                    CommunicationLogEntry(
+                        timestamp=self._last_timestamp,
+                        node_id=node_id,
+                        event=f"SCE rejected invalid input: {result.error_reason}",
+                        packet_id=None,
+                    )
+                )
+                continue
+
+            node.transition_flag = result.transition
+            node.previous_state = result.previous_state
+            node.persistence_counter = result.persistence_counter
+            node.pending_state = result.pending_state
+            node.sync_state = result.current_state
+            node.record_state_history(
+                step=self.cycle_count,
+                timestamp=self._last_timestamp,
+                state=node.sync_state,
+            )
+        return self.sce_audit
 
     def advance_timing_state(self, elapsed_seconds):
         """Advance every node's raw simulated timing measurements by
