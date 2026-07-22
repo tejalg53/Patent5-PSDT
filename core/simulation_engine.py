@@ -5,8 +5,8 @@ Orchestrates the existing Sprint 4-9 engines (DTCE, PEEE, PSME, SCE, ARAC,
 wired together by CentralSynchronizationCoordinator) into a genuine
 closed-loop, time-evolving digital twin:
 
-    Node State(t) -> DTCE -> PEEE -> PSME -> SCE -> ARAC -> Resource Action
-        -> Node State(t+dt)
+Node State(t) -> DTCE -> PEEE -> PSME -> SCE -> ARAC -> Resource Action
+-> Node State(t+dt)
 
 This module does NOT reimplement any of the DTCE/PEEE/PSME/SCE/ARAC
 mathematics. It only sequences the existing, already-tested Coordinator
@@ -17,25 +17,36 @@ jitter, scenario/context timelines, PRAP-driven resource application over
 time, battery/energy bookkeeping, disturbance injection, simulation
 invariant checks, and full time-series history recording.
 
+Sprint 11 adds a second control_mode, "uniform" (Deliverable 3): every
+node receives the same fixed synchronization/beacon/wake-up/TX policy
+(config/baseline_policies.py) regardless of body zone, PT, PE, PSM, or
+SCE state, and ARAC is never invoked to control resources. DTCE/PEEE/PSME/
+SCE still run in this mode so their outputs remain available for
+diagnostic/evaluation metrics, but they never reach resource control -
+only core/experiment_engine.py's control_mode selection determines which
+resource-control path this engine takes. The default control_mode,
+"adaptive", is exactly Sprint 10's original behavior and is unchanged.
+
 One simulation cycle (fixed, documented order):
 
-    1.  Update environmental/network conditions (scenario timeline)
-    2.  Update node physical/technical state           (Coordinator)
-    3.  Accumulate clock drift                          (Coordinator/PEEE)
-    4.  Determine whether synchronization is due        (this engine)
-    5.  Apply synchronization/resync effects if due     (this engine)
-    6.  Generate/update PSSP measurements               (Coordinator)
-    7.  DTCE  -> PTz(t)                                 (Coordinator)
-    8.  PEEE  -> PEz(t)                                 (Coordinator)
-    9.  PSME  -> PSMz(t)                                (Coordinator)
-    10. SCE   -> synchronization state                  (Coordinator)
-    11. ARAC  -> resource allocation                    (Coordinator)
-    12. Generate/apply PRAP                             (Coordinator)
-    13. Update resource configuration                   (Coordinator)
-    14. Calculate communication/energy activity         (Coordinator + engine)
-    15. Update battery/energy state                     (this engine)
-    16. Record history                                  (this engine)
-    17. Advance simulation clock                        (this engine)
+1. Update environmental/network conditions (scenario timeline)
+2. Update node physical/technical state (Coordinator)
+3. Accumulate clock drift (Coordinator/PEEE)
+4. Determine whether synchronization is due (this engine)
+5. Apply synchronization/resync effects if due (this engine)
+6. Generate/update PSSP measurements (Coordinator)
+7. DTCE -> PTz(t) (Coordinator)
+8. PEEE -> PEz(t) (Coordinator)
+9. PSME -> PSMz(t) (Coordinator)
+10. SCE -> synchronization state (Coordinator)
+11. ARAC -> resource allocation (Coordinator) OR fixed Uniform policy
+    (this engine), depending on control_mode (Sprint 11 Deliverable 3)
+12. Generate/apply PRAP (Coordinator or this engine)
+13. Update resource configuration (Coordinator or this engine)
+14. Calculate communication/energy activity (Coordinator/this engine)
+15. Update battery/energy state (this engine)
+16. Record history (this engine)
+17. Advance simulation clock (this engine)
 
 Steps 2/3/6 are performed together by one call to the Coordinator's
 existing run_communication_cycle(), which already advances every node's
@@ -56,6 +67,7 @@ from core.node_factory import generate_nodes
 from core.coordinator import CentralSynchronizationCoordinator
 from core.simulation_history import SimulationHistory
 from core.error_profiles import NETWORK_DELAY_BOUNDS_MS, CLOCK_DRIFT_BOUNDS_MS
+from core.packets import PRAP
 
 from config.simulation_profiles import (
     DEFAULT_DURATION_S,
@@ -77,9 +89,15 @@ from config.energy_model import (
     SYNC_EVENT_ENERGY_J,
     PRAP_APPLY_ENERGY_J,
 )
+from config.resource_profiles import (
+    RADIO_WAKE_DURATION_S,
+    ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL,
+    DEFAULT_TRANSMIT_POWER_LEVEL,
+)
+from config.baseline_policies import UNIFORM_POLICIES, DEFAULT_UNIFORM_POLICY
 
 
-def _clamp(value: float, bounds) -> float:
+def _clamp(value, bounds):
     lo, hi = bounds
     return max(lo, min(hi, value))
 
@@ -87,14 +105,20 @@ def _clamp(value: float, bounds) -> float:
 class DigitalTwinSimulationEngine:
     """A single closed-loop, time-evolving Digital Twin simulation run."""
 
-    def __init__(self, num_nodes: int = 30, duration_s: float = DEFAULT_DURATION_S,
-                 time_step_s: float = DEFAULT_TIME_STEP_S, seed: int = DEFAULT_SEED,
-                 network_profile: str = DEFAULT_NETWORK_PROFILE,
-                 scenario: str = DEFAULT_SCENARIO, history_mode: str = "interactive"):
+    def __init__(self, num_nodes=30, duration_s=DEFAULT_DURATION_S,
+                 time_step_s=DEFAULT_TIME_STEP_S, seed=DEFAULT_SEED,
+                 network_profile=DEFAULT_NETWORK_PROFILE,
+                 scenario=DEFAULT_SCENARIO, history_mode="interactive",
+                 control_mode="adaptive",
+                 baseline_policy=DEFAULT_UNIFORM_POLICY):
         if scenario not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario!r}")
         if network_profile not in NETWORK_PROFILES:
             raise ValueError(f"Unknown network profile: {network_profile!r}")
+        if control_mode not in ("adaptive", "uniform"):
+            raise ValueError(f"Unknown control_mode: {control_mode!r}")
+        if control_mode == "uniform" and baseline_policy not in UNIFORM_POLICIES:
+            raise ValueError(f"Unknown baseline_policy: {baseline_policy!r}")
 
         self.num_nodes = num_nodes
         self.duration_s = float(duration_s)
@@ -104,30 +128,34 @@ class DigitalTwinSimulationEngine:
         self.scenario_name = scenario
         self.history_mode = history_mode
 
-        self.coordinator: Optional[CentralSynchronizationCoordinator] = None
-        self.history: Optional[SimulationHistory] = None
+        self.control_mode = control_mode
+        self.baseline_policy = baseline_policy
+
+        self.model_version = None
+        self.experiment_id = None
+
+        self.coordinator = None
+        self.history = None
 
         self.sim_time = 0.0
         self.cycle = 0
         self.total_sync_events = 0
         self.total_state_transitions = 0
-        self.invariant_violations: List[str] = []
+        self.invariant_violations = []
 
-        self._node_rngs: Dict[str, random.Random] = {}
-        self._time_since_sync_ms: Dict[str, float] = {}
-        self._last_sync_time_s: Dict[str, float] = {}
+        self._node_rngs = {}
+        self._time_since_sync_ms = {}
+        self._last_sync_time_s = {}
         self._active_network_profile = network_profile
-        self._manual_motion_state: Optional[str] = None
-        self._manual_environment_state: Optional[str] = None
-        self._last_sync_fired: set = set()
-        self._last_step_energy: Dict[str, float] = {}
+        self._manual_motion_state = None
+        self._manual_environment_state = None
+        self._last_sync_fired = set()
+        self._last_step_energy = {}
 
         self.initialized = False
         self.finished = False
 
-    def initialize(self) -> "DigitalTwinSimulationEngine":
-        """Create a fresh Coordinator + node population and establish the
-        t=0 state (Deliverables 1, 2)."""
+    def initialize(self):
         self.coordinator = CentralSynchronizationCoordinator(seed=self.seed)
         nodes = generate_nodes(self.num_nodes, self.seed)
         self.coordinator.register_nodes(nodes)
@@ -156,16 +184,15 @@ class DigitalTwinSimulationEngine:
         self.coordinator.run_dtce_pass()
         self.coordinator.run_peee_pass()
         self.coordinator.run_sce_pass()
-        self.coordinator.run_arac_pass(elapsed_seconds=0.0)
+        self._run_resource_control_pass(elapsed_seconds=0.0)
         self._check_invariants()
         self._record_step()
         return self
 
-    def reset(self) -> "DigitalTwinSimulationEngine":
-        """Re-initialize with the same configuration (Deliverable 18)."""
+    def reset(self):
         return self.initialize()
 
-    def step(self) -> "DigitalTwinSimulationEngine":
+    def step(self):
         if not self.initialized or self.finished:
             return self
 
@@ -186,7 +213,7 @@ class DigitalTwinSimulationEngine:
         self.coordinator.run_dtce_pass()
         self.coordinator.run_peee_pass()
         self.coordinator.run_sce_pass()
-        self.coordinator.run_arac_pass(elapsed_seconds=self.dt)
+        self._run_resource_control_pass(elapsed_seconds=self.dt)
 
         transitions_this_step = sum(
             1 for n in self.coordinator.registry.values() if n.transition_flag
@@ -204,23 +231,75 @@ class DigitalTwinSimulationEngine:
             self.finished = True
         return self
 
-    def run_steps(self, n: int) -> "DigitalTwinSimulationEngine":
+    def run_steps(self, n):
         for _ in range(n):
             if self.finished:
                 break
             self.step()
         return self
 
-    def run_to_completion(self, max_cycles: int = 100000) -> "DigitalTwinSimulationEngine":
-        """Advance until duration_s is reached. Simulated time is decoupled
-        from wall-clock time (Deliverable 2)."""
+    def run_to_completion(self, max_cycles=100000):
         guard = 0
         while not self.finished and guard < max_cycles:
             self.step()
             guard += 1
         return self
 
-    def _generate_pssps(self) -> None:
+    def _run_resource_control_pass(self, elapsed_seconds):
+        if self.control_mode == "uniform":
+            self._apply_uniform_resources(elapsed_seconds)
+        else:
+            self.coordinator.run_arac_pass(elapsed_seconds=elapsed_seconds)
+
+    def _apply_uniform_resources(self, elapsed_seconds):
+        policy = UNIFORM_POLICIES[self.baseline_policy]
+        coord = self.coordinator
+        for node_id, node in coord.registry.items():
+            node.allocated_sync_interval_ms = policy["sync_interval_ms"]
+            node.allocated_beacon_interval_ms = policy["beacon_interval_ms"]
+            node.allocated_radio_wakeup_interval_ms = policy["radio_wakeup_interval_ms"]
+            node.allocated_transmit_power_level = policy["transmit_power_level"]
+            node.allocated_transmit_power_pct = policy["transmit_power_pct"]
+            node.allocated_trigger_offset_ms = -round(
+                (node.mechanical_startup_delay or 0.0) + (node.actuator_driver_delay or 0.0), 2
+            )
+            node.resource_status = "Uniform"
+
+            packet_id = coord._next_packet_id("PRAP")
+            prap = PRAP(
+                packet_id=packet_id,
+                target_node_id=node_id,
+                body_zone=node.body_zone,
+                simulation_timestamp=self.sim_time,
+                target_state=node.sync_state,
+                sync_interval_ms=policy["sync_interval_ms"],
+                beacon_interval_ms=policy["beacon_interval_ms"],
+                radio_wakeup_interval_ms=policy["radio_wakeup_interval_ms"],
+                transmit_power_level=policy["transmit_power_level"],
+                trigger_timing_offset_ms=node.allocated_trigger_offset_ms,
+                is_baseline=True,
+            )
+            coord.latest_praps[node_id] = prap
+            coord.prap_generated += 1
+
+            if policy["radio_wakeup_interval_ms"]:
+                wake_count = elapsed_seconds / (policy["radio_wakeup_interval_ms"] / 1000.0)
+                active_seconds = wake_count * RADIO_WAKE_DURATION_S
+                node.radio_active_time += active_seconds
+                cost_per_second = ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL.get(
+                    policy["transmit_power_level"],
+                    ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL[DEFAULT_TRANSMIT_POWER_LEVEL],
+                )
+                node.energy_consumed += active_seconds * cost_per_second
+
+            node.record_resource_history(
+                step=self.cycle, timestamp=self.sim_time,
+                sync_interval_ms=policy["sync_interval_ms"],
+                beacon_interval_ms=policy["beacon_interval_ms"],
+                transmit_power_pct=policy["transmit_power_pct"],
+            )
+
+    def _generate_pssps(self):
         coord = self.coordinator
         coord.cycle_count += 1
         for node_id, node in coord.registry.items():
@@ -238,8 +317,7 @@ class DigitalTwinSimulationEngine:
                 coord.rejected_packets += 1
         coord._last_timestamp = self.sim_time
 
-
-    def _current_scenario_phase(self, t: float):
+    def _current_scenario_phase(self, t):
         timeline = SCENARIOS[self.scenario_name]["timeline"]
         fraction = (t / self.duration_s) if self.duration_s > 0 else 0.0
         phase = timeline[0]
@@ -248,7 +326,7 @@ class DigitalTwinSimulationEngine:
                 phase = entry
         return phase
 
-    def _apply_scenario_context(self, t: float) -> None:
+    def _apply_scenario_context(self, t):
         _, motion_state, network_profile, environment_state = self._current_scenario_phase(t)
         motion_state = self._manual_motion_state or motion_state
         environment_state = self._manual_environment_state or environment_state
@@ -257,11 +335,11 @@ class DigitalTwinSimulationEngine:
         )
         self._active_network_profile = network_profile
 
-    def _apply_network_profile(self) -> None:
+    def _apply_network_profile(self):
         profile = NETWORK_PROFILES[self._active_network_profile]
         self.coordinator.set_error_model_context(network_condition=profile["condition"])
 
-    def _apply_extra_network_jitter(self) -> None:
+    def _apply_extra_network_jitter(self):
         profile = NETWORK_PROFILES[self._active_network_profile]
         std = profile["extra_jitter_std_ms"]
         for node_id, node in self.coordinator.registry.items():
@@ -269,12 +347,12 @@ class DigitalTwinSimulationEngine:
             jitter = rng.gauss(0.0, std)
             node.network_delay = _clamp(node.network_delay + jitter, NETWORK_DELAY_BOUNDS_MS)
 
-    def allocated_sync_interval_ms(self, node) -> float:
-        if node.resource_status == "Adaptive" and node.allocated_sync_interval_ms:
+    def allocated_sync_interval_ms(self, node):
+        if node.resource_status in ("Adaptive", "Uniform") and node.allocated_sync_interval_ms:
             return node.allocated_sync_interval_ms
         return node.sync_interval * 1000.0
 
-    def _process_synchronization(self) -> set:
+    def _process_synchronization(self):
         fired = set()
         dt_ms = self.dt * 1000.0
         for node_id, node in self.coordinator.registry.items():
@@ -297,14 +375,14 @@ class DigitalTwinSimulationEngine:
                 )
         return fired
 
-    def _apply_event_energy(self) -> None:
+    def _apply_event_energy(self):
         for node_id in self._last_sync_fired:
             self.coordinator.registry[node_id].energy_consumed += SYNC_EVENT_ENERGY_J
         for node_id, node in self.coordinator.registry.items():
             if node.sync_state != "Unclassified":
                 node.energy_consumed += PRAP_APPLY_ENERGY_J
 
-    def _deplete_battery(self, energy_before: Dict[str, float]) -> None:
+    def _deplete_battery(self, energy_before):
         self._last_step_energy = {}
         for node_id, node in self.coordinator.registry.items():
             delta = max(0.0, node.energy_consumed - energy_before.get(node_id, node.energy_consumed))
@@ -313,7 +391,7 @@ class DigitalTwinSimulationEngine:
                 battery_drop = (delta / NODE_BATTERY_CAPACITY_JOULES) * 100.0
                 node.battery_level = _clamp(node.battery_level - battery_drop, (0.0, 100.0))
 
-    def inject_network_jitter(self, node_id: Optional[str] = None) -> None:
+    def inject_network_jitter(self, node_id=None):
         targets = [self.coordinator.registry[node_id]] if node_id else list(self.coordinator.registry.values())
         for node in targets:
             node.network_delay = _clamp(
@@ -321,7 +399,7 @@ class DigitalTwinSimulationEngine:
             )
         self.history.log_event(self.sim_time, node_id or "ALL", "Disturbance: network jitter spike injected")
 
-    def inject_clock_drift_spike(self, node_id: Optional[str] = None) -> None:
+    def inject_clock_drift_spike(self, node_id=None):
         targets = [self.coordinator.registry[node_id]] if node_id else list(self.coordinator.registry.values())
         for node in targets:
             node.clock_drift = _clamp(
@@ -329,20 +407,19 @@ class DigitalTwinSimulationEngine:
             )
         self.history.log_event(self.sim_time, node_id or "ALL", "Disturbance: clock drift spike injected")
 
-    def set_motion_state(self, motion_state: Optional[str]) -> None:
-        """Manual override; persists until cleared or reset() (Deliverable 28)."""
+    def set_motion_state(self, motion_state):
         self._manual_motion_state = motion_state
         self.history.log_event(self.sim_time, "ALL", f"Disturbance: motion state manually set to {motion_state}")
 
-    def increase_environmental_disturbance(self) -> None:
+    def increase_environmental_disturbance(self):
         self._manual_environment_state = DISTURBANCE_ENVIRONMENT_STATE
         self.history.log_event(self.sim_time, "ALL", "Disturbance: environmental disturbance increased")
 
-    def clear_manual_overrides(self) -> None:
+    def clear_manual_overrides(self):
         self._manual_motion_state = None
         self._manual_environment_state = None
 
-    def _check_invariants(self) -> List[str]:
+    def _check_invariants(self):
         violations = []
         for node_id, node in self.coordinator.registry.items():
             pt, pe, psm = node.perceptual_threshold, node.perceived_error, node.psm
@@ -353,12 +430,12 @@ class DigitalTwinSimulationEngine:
             if pt is not None and pe is not None and psm is not None:
                 if abs(psm - (pt - pe)) > 1e-6:
                     violations.append(f"{node_id}: PSM != PT - PE")
-                if node.normalized_psm is not None and pt:
-                    if abs(node.normalized_psm - (psm / pt)) > 1e-6:
-                        violations.append(f"{node_id}: NPSM != PSM / PT")
-                if node.threshold_utilization_pct is not None and pt:
-                    if abs(node.threshold_utilization_pct - (pe / pt * 100.0)) > 1e-6:
-                        violations.append(f"{node_id}: TU != PE / PT * 100")
+            if node.normalized_psm is not None and pt:
+                if abs(node.normalized_psm - (psm / pt)) > 1e-6:
+                    violations.append(f"{node_id}: NPSM != PSM / PT")
+            if node.threshold_utilization_pct is not None and pt:
+                if abs(node.threshold_utilization_pct - (pe / pt * 100.0)) > 1e-6:
+                    violations.append(f"{node_id}: TU != PE / PT * 100")
             if not (0.0 <= node.battery_level <= 100.0):
                 violations.append(f"{node_id}: battery out of range ({node.battery_level})")
             if node.energy_consumed < 0:
@@ -373,9 +450,9 @@ class DigitalTwinSimulationEngine:
                 self.history.log_event(self.sim_time, "INVARIANT", v)
         return violations
 
-    def _record_step(self) -> None:
+    def _record_step(self):
         pts, pes, psms, batteries = [], [], [], []
-        state_counts: Dict[str, int] = {}
+        state_counts = {}
         step_energy = self._last_step_energy
 
         for node_id, node in self.coordinator.registry.items():
@@ -423,8 +500,8 @@ class DigitalTwinSimulationEngine:
             mean_battery_percent=sum(batteries) / len(batteries) if batteries else None,
         )
 
-    def status(self) -> dict:
-        state_counts: Dict[str, int] = {}
+    def status(self):
+        state_counts = {}
         for node in self.coordinator.registry.values():
             state_counts[node.sync_state] = state_counts.get(node.sync_state, 0) + 1
         return {
@@ -441,7 +518,7 @@ class DigitalTwinSimulationEngine:
             "invariant_violations": len(self.invariant_violations),
         }
 
-    def node_inspector(self, node_id: str, recent: int = 20) -> dict:
+    def node_inspector(self, node_id, recent=20):
         node = self.coordinator.registry[node_id]
         series = self.history.node_dataframe_dict(node_id)
         recent_events = [e for e in self.history.recent_events(200) if e["node_id"] == node_id][:recent]
@@ -457,8 +534,8 @@ class DigitalTwinSimulationEngine:
             "recent_events": recent_events,
         }
 
-    def body_zone_summary(self) -> dict:
-        zones: Dict[str, dict] = {}
+    def body_zone_summary(self):
+        zones = {}
         for node in self.coordinator.registry.values():
             z = zones.setdefault(node.body_zone, {
                 "count": 0, "pt": [], "pe": [], "psm": [], "sync_interval_ms": [],
