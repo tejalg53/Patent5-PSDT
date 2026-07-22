@@ -94,6 +94,22 @@ st.markdown(
 )
 
 st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
+
+st.markdown("---")
+st.markdown(
+        '<div style="text-align:center; font-weight:700; color:#0B3D91; font-size:1.15rem;">'
+        'Sprint 10: Temporal Digital Twin</div>'
+        '<div style="text-align:center; font-size:0.85rem; color:#16A34A; font-weight:600;">'
+        'IMPLEMENTED &#10003;</div>',
+        unsafe_allow_html=True,
+)
+st.caption(
+        "core/simulation_engine.py orchestrates DTCE, PEEE, PSME, SCE, and ARAC into a "
+        "closed, time-evolving loop: Node State(t) -> DTCE -> PEEE -> PSME -> SCE -> "
+        "ARAC -> Resource Action -> Node State(t+dt). See the Simulation page's "
+        "Live Digital Twin section for the running implementation."
+)
+st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
 st.subheader("Module Details")
 
 selected = st.session_state.selected_module
