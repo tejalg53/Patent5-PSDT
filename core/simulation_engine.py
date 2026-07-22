@@ -175,7 +175,8 @@ class DigitalTwinSimulationEngine:
         self._apply_scenario_context(self.sim_time)
         self._apply_network_profile()
 
-        self.coordinator.run_communication_cycle(simulation_timestamp=self.sim_time)
+        self.coordinator.advance_timing_state(self.dt)
+        self._generate_pssps()
         self._apply_extra_network_jitter()
 
         self._last_sync_fired = self._process_synchronization()
@@ -218,6 +219,25 @@ class DigitalTwinSimulationEngine:
             self.step()
             guard += 1
         return self
+
+    def _generate_pssps(self) -> None:
+        coord = self.coordinator
+        coord.cycle_count += 1
+        for node_id, node in coord.registry.items():
+            packet_id = coord._next_packet_id("PSSP")
+            pssp = node.to_pssp(packet_id=packet_id, simulation_timestamp=self.sim_time)
+            coord.packets_generated += 1
+            coord.packets_received += 1
+            coord.packet_history[pssp.packet_id] = pssp
+            is_valid, reason = coord.validate_pssp(pssp)
+            if is_valid:
+                coord._seen_packet_ids.add(pssp.packet_id)
+                coord.valid_packets += 1
+                coord.status_repository[node_id] = pssp
+            else:
+                coord.rejected_packets += 1
+        coord._last_timestamp = self.sim_time
+
 
     def _current_scenario_phase(self, t: float):
         timeline = SCENARIOS[self.scenario_name]["timeline"]
