@@ -11,8 +11,231 @@ from core.error_profiles import (
     NETWORK_CONDITION_ADJUSTMENT_MS,
     DEFAULT_NETWORK_CONDITION,
 )
+from core.simulation_engine import DigitalTwinSimulationEngine
+from core.sce import STATE_ORDER, RELAXED, NOMINAL, ELEVATED, IMMEDIATE
+from config.simulation_profiles import (
+    DURATION_OPTIONS_S,
+    TIME_STEP_OPTIONS_S,
+    DEFAULT_DURATION_S,
+    DEFAULT_TIME_STEP_S,
+    DEFAULT_SEED,
+    NETWORK_PROFILE_OPTIONS,
+    DEFAULT_NETWORK_PROFILE,
+    SCENARIO_OPTIONS,
+    DEFAULT_SCENARIO,
+)
 
-st.title("Simulation")
+st.title("Simulation") 
+st.markdown("---")
+st.header("Live Digital Twin (Sprint 10)")
+st.markdown("### Digital Twin Control")
+st.caption(
+    "A time-evolving closed-loop simulation: Node State(t) -> DTCE -> PEEE -> "
+    "PSME -> SCE -> ARAC -> Resource Action -> Node State(t+dt). Simulated time "
+    "is decoupled from wall-clock time, so a full run completes in well under a "
+    "second regardless of the configured duration (Sprint 10 Deliverable 2)."
+)
+
+ctrl_cols = st.columns(6)
+with ctrl_cols[0]:
+    s10_nodes = st.selectbox("Nodes", NODE_COUNT_OPTIONS, index=NODE_COUNT_OPTIONS.index(30), key="s10_nodes")
+with ctrl_cols[1]:
+    s10_duration = st.selectbox("Duration (s)", DURATION_OPTIONS_S, index=DURATION_OPTIONS_S.index(DEFAULT_DURATION_S), key="s10_duration")
+with ctrl_cols[2]:
+    s10_dt = st.selectbox("Time Step (s)", TIME_STEP_OPTIONS_S, index=TIME_STEP_OPTIONS_S.index(DEFAULT_TIME_STEP_S), key="s10_dt")
+with ctrl_cols[3]:
+    s10_seed = st.number_input("Seed", value=DEFAULT_SEED, step=1, key="s10_seed")
+with ctrl_cols[4]:
+    s10_network = st.selectbox("Network Profile", NETWORK_PROFILE_OPTIONS, index=NETWORK_PROFILE_OPTIONS.index(DEFAULT_NETWORK_PROFILE), key="s10_network")
+with ctrl_cols[5]:
+    s10_scenario = st.selectbox("Context Scenario", SCENARIO_OPTIONS, index=SCENARIO_OPTIONS.index(DEFAULT_SCENARIO), key="s10_scenario")
+
+s10_history_mode = st.radio(
+    "History Mode", ["Interactive (bounded)", "Experiment (complete)"],
+    horizontal=True, key="s10_history_mode",
+)
+
+btn_cols = st.columns(5)
+init_clicked = btn_cols[0].button("Initialize", use_container_width=True, key="s10_init_btn")
+run_clicked = btn_cols[1].button("Run", use_container_width=True, key="s10_run_btn")
+pause_clicked = btn_cols[2].button("Pause", use_container_width=True, key="s10_pause_btn")
+step_clicked = btn_cols[3].button("Step", use_container_width=True, key="s10_step_btn")
+reset_clicked = btn_cols[4].button("Reset", use_container_width=True, key="s10_reset_btn")
+
+if init_clicked or reset_clicked:
+    new_engine = DigitalTwinSimulationEngine(
+        num_nodes=s10_nodes, duration_s=s10_duration, time_step_s=s10_dt, seed=int(s10_seed),
+        network_profile=s10_network, scenario=s10_scenario,
+        history_mode="experiment" if s10_history_mode.startswith("Experiment") else "interactive",
+    )
+    new_engine.initialize()
+    st.session_state.s10_engine = new_engine
+
+s10_engine = st.session_state.get("s10_engine")
+
+if run_clicked and s10_engine is not None:
+    s10_engine.run_to_completion()
+
+if step_clicked and s10_engine is not None:
+    s10_engine.step()
+
+if pause_clicked and s10_engine is not None:
+    st.info("Run completes synchronously in one click since simulated time is decoupled from wall-clock time (Deliverable 2); use Step to advance one cycle at a time instead.")
+
+if s10_engine is None:
+    st.info("Click Initialize to create a Digital Twin simulation run.")
+else:
+    s10_status = s10_engine.status()
+
+    st.markdown("**Simulation Status**")
+    status_cols = st.columns(4)
+    status_cols[0].metric("Simulation Time", f"{s10_status['sim_time']:.0f} / {s10_status['duration_s']:.0f} s")
+    status_cols[1].metric("Active Nodes", s10_status["active_nodes"])
+    status_cols[2].metric("Current Cycle", s10_status["cycle"])
+    status_cols[3].metric("Sync Events", s10_status["sync_events"])
+
+    status_cols2 = st.columns(4)
+    status_cols2[0].metric("State Transitions", s10_status["state_transitions"])
+    status_cols2[1].metric("PRAPs Applied", s10_status["prap_applied"])
+    status_cols2[2].metric("Energy Consumed", f"{s10_status['energy_consumed_j']:.3f} J")
+    status_cols2[3].metric("Invariant Violations", s10_status["invariant_violations"])
+
+    if s10_status["finished"]:
+        st.success("Run complete.")
+    if s10_status["invariant_violations"]:
+        st.warning(f"{s10_status['invariant_violations']} invariant violation(s) were logged - see Event Log.")
+
+    s10_node_ids = list(s10_engine.coordinator.registry.keys())
+    st.markdown("---")
+    st.markdown("### Live Node Inspector")
+    s10_selected_node_id = st.selectbox("Select a node", s10_node_ids, key="s10_selected_node")
+
+    if s10_selected_node_id:
+        s10_inspector = s10_engine.node_inspector(s10_selected_node_id)
+        s10_node = s10_inspector["node"]
+
+        insp_cols = st.columns(4)
+        insp_cols[0].metric("PT", f"{s10_node.perceptual_threshold:.2f} ms" if s10_node.perceptual_threshold is not None else "-")
+        insp_cols[1].metric("PE", f"{s10_node.perceived_error:.2f} ms" if s10_node.perceived_error is not None else "-")
+        insp_cols[2].metric("PSM", f"{s10_node.psm:.2f} ms" if s10_node.psm is not None else "-")
+        insp_cols[3].metric("NPSM", f"{s10_node.normalized_psm:.3f}" if s10_node.normalized_psm is not None else "-")
+
+        insp_cols2 = st.columns(4)
+        insp_cols2[0].metric("State", s10_node.sync_state)
+        insp_cols2[1].metric("Previous State", s10_node.previous_state or "-")
+        insp_cols2[2].metric("Sync Interval", f"{s10_engine.allocated_sync_interval_ms(s10_node):.0f} ms")
+        insp_cols2[3].metric("TX Power", s10_node.allocated_transmit_power_level or "-")
+
+        insp_cols3 = st.columns(4)
+        insp_cols3[0].metric("Energy Used", f"{s10_node.energy_consumed:.3f} J")
+        insp_cols3[1].metric("Battery", f"{s10_node.battery_level:.2f} %")
+        insp_cols3[2].metric("Last Sync", f"{s10_inspector['last_sync_time_s']:.1f} s" if s10_inspector["last_sync_time_s"] is not None else "-")
+        insp_cols3[3].metric("Next Sync (est.)", f"{s10_inspector['next_sync_due_s']:.1f} s" if s10_inspector["next_sync_due_s"] is not None else "-")
+
+        s10_series = s10_inspector["series"]
+        if s10_series["timestamp"]:
+            s10_df_pt = pd.DataFrame({
+                "time_s": s10_series["timestamp"],
+                "PT (ms)": s10_series["PT"],
+                "PE (ms)": s10_series["PE"],
+                "PSM (ms)": s10_series["PSM"],
+            }).set_index("time_s")
+            st.markdown("**PT / PE / PSM over time**")
+            st.line_chart(s10_df_pt)
+
+            s10_state_code = {IMMEDIATE: 0, ELEVATED: 1, NOMINAL: 2, RELAXED: 3}
+            s10_df_state = pd.DataFrame({
+                "time_s": s10_series["timestamp"],
+                "state_code": [s10_state_code.get(s) for s in s10_series["current_state"]],
+            }).set_index("time_s")
+            st.markdown("**State Timeline** (0=IMMEDIATE, 1=ELEVATED, 2=NOMINAL, 3=RELAXED)")
+            st.line_chart(s10_df_state)
+
+            s10_df_resource = pd.DataFrame({
+                "time_s": s10_series["timestamp"],
+                "Sync Interval (ms)": s10_series["sync_interval_ms"],
+                "Beacon Interval (ms)": s10_series["beacon_interval_ms"],
+                "TX Power (%)": s10_series["tx_power_pct"],
+            }).set_index("time_s")
+            st.markdown("**Resource-Control Timeline**")
+            st.line_chart(s10_df_resource)
+
+        with st.expander("Recent events for this node"):
+            for s10_event in s10_inspector["recent_events"]:
+                st.text(f"T={s10_event['timestamp']:.1f}s  {s10_event['message']}")
+
+    st.markdown("---")
+    st.markdown("### Global Digital Twin Dashboard")
+    dash_cols = st.columns(2)
+    with dash_cols[0]:
+        st.markdown("**Current State Distribution**")
+        st.bar_chart(pd.DataFrame.from_dict(s10_status["state_counts"], orient="index", columns=["Nodes"]))
+    with dash_cols[1]:
+        s10_global_series = s10_engine.history.global_dataframe_dict()
+        if s10_global_series["timestamp"]:
+            s10_df_global = pd.DataFrame({
+                "time_s": s10_global_series["timestamp"],
+                "Mean PT": s10_global_series["mean_pt"],
+                "Mean PE": s10_global_series["mean_pe"],
+                "Mean PSM": s10_global_series["mean_psm"],
+            }).set_index("time_s")
+            st.markdown("**Mean PT / PE / PSM over time**")
+            st.line_chart(s10_df_global)
+
+    dash_metric_cols = st.columns(4)
+    dash_metric_cols[0].metric("Total Sync Events", s10_status["sync_events"])
+    s10_total_messages = s10_engine.coordinator.get_packet_counts()["generated"] + s10_engine.coordinator.prap_generated + s10_status["sync_events"]
+    dash_metric_cols[1].metric("Total Communication Messages", s10_total_messages)
+    dash_metric_cols[2].metric("Total Estimated Energy", f"{s10_status['energy_consumed_j']:.3f} J")
+    s10_mean_battery = sum(n.battery_level for n in s10_engine.coordinator.registry.values()) / len(s10_node_ids)
+    dash_metric_cols[3].metric("Mean Battery Remaining", f"{s10_mean_battery:.2f} %")
+
+    st.markdown("---")
+    st.markdown("### Body-Zone Analytics")
+    s10_zone_summary = s10_engine.body_zone_summary()
+    s10_zone_rows = []
+    for s10_zone in ZONE_ORDER:
+        s10_z = s10_zone_summary.get(s10_zone)
+        if not s10_z:
+            continue
+        s10_zone_rows.append({
+            "Zone": s10_zone, "Nodes": s10_z["count"],
+            "Mean PT (ms)": round(s10_z["mean_pt"], 2) if s10_z["mean_pt"] is not None else None,
+            "Mean PE (ms)": round(s10_z["mean_pe"], 2) if s10_z["mean_pe"] is not None else None,
+            "Mean PSM (ms)": round(s10_z["mean_psm"], 2) if s10_z["mean_psm"] is not None else None,
+            "Mean Sync Interval (ms)": round(s10_z["mean_sync_interval_ms"], 1),
+            "Sync Events (last step)": s10_z["sync_events_this_step"],
+            "Estimated Energy (J)": round(s10_z["energy_j"], 3),
+        })
+    st.dataframe(pd.DataFrame(s10_zone_rows), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.markdown("### Event Log")
+    with st.expander("Recent simulation events", expanded=False):
+        for s10_event in s10_engine.history.recent_events(150):
+            st.text(f"T={s10_event['timestamp']:.1f}s  {s10_event['node_id']}  {s10_event['message']}")
+
+    st.markdown("---")
+    st.markdown("### Disturbance Injection")
+    st.caption("Applies immediately to the current simulation state; effects propagate through the next Step/Run (Deliverable 28).")
+    s10_dist_target = st.selectbox("Target", ["ALL"] + s10_node_ids, key="s10_dist_target")
+    s10_target_id = None if s10_dist_target == "ALL" else s10_dist_target
+    dist_cols = st.columns(4)
+    if dist_cols[0].button("Inject Network Jitter", key="s10_dist_jitter"):
+        s10_engine.inject_network_jitter(s10_target_id)
+    if dist_cols[1].button("Inject Clock Drift Spike", key="s10_dist_drift"):
+        s10_engine.inject_clock_drift_spike(s10_target_id)
+    if dist_cols[2].button("Increase Environmental Disturbance", key="s10_dist_env"):
+        s10_engine.increase_environmental_disturbance()
+    s10_dist_motion = dist_cols[3].selectbox("Change Motion State", ["(scenario default)", "Stationary", "Walking", "Running"], key="s10_dist_motion")
+    if s10_dist_motion != "(scenario default)":
+        s10_engine.set_motion_state(s10_dist_motion)
+    else:
+        s10_engine.clear_manual_overrides()
+
+st.markdown("---")
+st.header("Manual Engine Testing (Sprint 3-9)")
+
 
 # ---------------------------------------------------------------------
 # Digital Twin Configuration
