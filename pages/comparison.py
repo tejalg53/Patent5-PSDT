@@ -1,4 +1,5 @@
 import statistics
+import time
 
 import streamlit as st
 import pandas as pd
@@ -9,6 +10,7 @@ from core.experiment_engine import (
     run_scenario_matrix,
     run_body_zone_experiment,
     run_disturbance_experiment,
+    run_scalability_matrix,
     ControlledExperiment,
 )
 from core.experiment_metrics import aggregate_metric, compare_runs, sanity_check, evaluate_success_criterion
@@ -17,6 +19,8 @@ from config.baseline_policies import (
     UNIFORM_POLICY_OPTIONS,
     DEFAULT_UNIFORM_POLICY,
     FULL_SEED_LIST,
+    DEFAULT_SCALABILITY_NODE_COUNTS,
+    DEFAULT_SCALABILITY_SEED_COUNT,
 )
 from config.simulation_profiles import (
     DEFAULT_DURATION_S,
@@ -435,3 +439,161 @@ if dist_results:
     )
 else:
     st.info("Click **Run Disturbance Experiment** to generate the response plots above.")
+
+st.markdown(
+    '<div class="psdt-section-heading">Scalability Analysis (Deliverable 10)</div>',
+    unsafe_allow_html=True,
+)
+st.caption(
+    "Runs the paired experiment at increasing node counts to test whether the PSM-Adaptive "
+    "resource-reduction benefit persists as the number of wearable nodes scales up. Uses the "
+    "Scenario and Baseline Policy configured above."
+)
+if st.button("Run Scalability Sweep"):
+    with st.spinner("Running paired experiments across node counts..."):
+        t0 = time.time()
+        scal_seeds = seeds[:DEFAULT_SCALABILITY_SEED_COUNT] if seeds else FULL_SEED_LIST[:DEFAULT_SCALABILITY_SEED_COUNT]
+        scal_results = run_scalability_matrix(
+            scenario=scenario,
+            duration=duration_s,
+            time_step=DEFAULT_TIME_STEP_S,
+            node_counts=DEFAULT_SCALABILITY_NODE_COUNTS,
+            seeds=scal_seeds,
+            baseline_policy=baseline_policy,
+        )
+        elapsed_s = time.time() - t0
+    st.session_state["exp11_scalability_results"] = scal_results
+    st.session_state["exp11_scalability_elapsed_s"] = elapsed_s
+    st.session_state["exp11_scalability_seeds"] = scal_seeds
+
+scal_results = st.session_state.get("exp11_scalability_results")
+if scal_results:
+    node_counts_sorted = sorted(scal_results.keys())
+    scal_rows = []
+    for n in node_counts_sorted:
+        b = scal_results[n]["baseline"]
+        p = scal_results[n]["proposed"]
+        sm_b = aggregate_metric([r["sync_messages"] for r in b])["mean"]
+        sm_p = aggregate_metric([r["sync_messages"] for r in p])["mean"]
+        e_b = aggregate_metric([r["estimated_energy_j"] for r in b])["mean"]
+        e_p = aggregate_metric([r["estimated_energy_j"] for r in p])["mean"]
+        v_b = aggregate_metric([r["violation_rate_pct"] for r in b])["mean"]
+        v_p = aggregate_metric([r["violation_rate_pct"] for r in p])["mean"]
+        scal_rows.append({
+            "Nodes": n,
+            "Sync Msgs (Uniform)": round(sm_b, 1),
+            "Sync Msgs (PSM-Adaptive)": round(sm_p, 1),
+            "Sync Msg Reduction %": round((sm_b - sm_p) / sm_b * 100, 1) if sm_b else None,
+            "Energy (Uniform, J)": round(e_b, 2),
+            "Energy (PSM-Adaptive, J)": round(e_p, 2),
+            "Energy Reduction %": round((e_b - e_p) / e_b * 100, 1) if e_b else None,
+            "Violation Rate Uniform (%)": round(v_b, 3),
+            "Violation Rate PSM-Adaptive (%)": round(v_p, 3),
+        })
+    scal_df = pd.DataFrame(scal_rows).set_index("Nodes")
+    st.dataframe(scal_df, use_container_width=True)
+
+    trend_df = pd.DataFrame(
+        {
+            "Sync Msg Reduction %": [r["Sync Msg Reduction %"] for r in scal_rows],
+            "Energy Reduction %": [r["Energy Reduction %"] for r in scal_rows],
+        },
+        index=[r["Nodes"] for r in scal_rows],
+    )
+    st.line_chart(trend_df)
+    st.caption(
+        f"Sweep of {len(node_counts_sorted)} node counts x {len(scal_results[node_counts_sorted[0]]['baseline'])} "
+        f"seeds ({len(node_counts_sorted) * len(scal_results[node_counts_sorted[0]]['baseline']) * 2} total simulation runs) "
+        f"completed in {st.session_state.get('exp11_scalability_elapsed_s', 0):.1f}s. If the reduction-% lines stay roughly "
+        "flat across node counts, the benefit is not an artifact of a specific node count."
+    )
+else:
+    st.info("Click **Run Scalability Sweep** to test whether the benefit persists as node count increases.")
+
+st.markdown(
+    '<div class="psdt-section-heading">Ablation: Baseline Policy Sensitivity (Deliverable 22)</div>',
+    unsafe_allow_html=True,
+)
+st.caption(
+    "The primary comparison above is fixed against one uniform baseline policy chosen before "
+    "looking at results (per Deliverable 3/21). This ablation re-runs the same paired seeds against "
+    "every available uniform baseline policy option to check whether the conclusion (PSM-Adaptive "
+    "reduces resource use without materially worsening the violation rate) is sensitive to that choice, "
+    "rather than an artifact of picking a conveniently weak baseline. Internal PSM-Adaptive sub-mechanisms "
+    "are not independently toggled here, since the frozen model (Deliverable 1) must not be altered."
+)
+if st.button("Run Baseline-Policy Ablation"):
+    with st.spinner("Running paired experiments against every baseline policy option..."):
+        ablation_seeds = seeds if seeds else FULL_SEED_LIST[:DEFAULT_SCALABILITY_SEED_COUNT]
+        ablation_results = {}
+        for policy_option in UNIFORM_POLICY_OPTIONS:
+            ablation_results[policy_option] = run_seed_matrix(
+                nodes=num_nodes,
+                duration=duration_s,
+                time_step=DEFAULT_TIME_STEP_S,
+                scenario=scenario,
+                seeds=ablation_seeds,
+                baseline_policy=policy_option,
+            )
+    st.session_state["exp11_ablation_results"] = ablation_results
+    st.session_state["exp11_ablation_seeds"] = ablation_seeds
+
+ablation_results = st.session_state.get("exp11_ablation_results")
+if ablation_results:
+    ablation_rows = []
+    for policy_option, res in ablation_results.items():
+        b = res["baseline"]
+        p = res["proposed"]
+        sm_b = aggregate_metric([r["sync_messages"] for r in b])["mean"]
+        sm_p = aggregate_metric([r["sync_messages"] for r in p])["mean"]
+        e_b = aggregate_metric([r["estimated_energy_j"] for r in b])["mean"]
+        e_p = aggregate_metric([r["estimated_energy_j"] for r in p])["mean"]
+        v_b = aggregate_metric([r["violation_rate_pct"] for r in b])["mean"]
+        v_p = aggregate_metric([r["violation_rate_pct"] for r in p])["mean"]
+        ablation_rows.append({
+            "Baseline Policy": policy_option,
+            "Sync Msg Reduction %": round((sm_b - sm_p) / sm_b * 100, 1) if sm_b else None,
+            "Energy Reduction %": round((e_b - e_p) / e_b * 100, 1) if e_b else None,
+            "Violation Rate Uniform (%)": round(v_b, 3),
+            "Violation Rate PSM-Adaptive (%)": round(v_p, 3),
+        })
+    ablation_df = pd.DataFrame(ablation_rows).set_index("Baseline Policy")
+    st.dataframe(ablation_df, use_container_width=True)
+    st.caption(
+        f"Ran against {len(ablation_results)} baseline policy option(s) using "
+        f"{len(st.session_state.get('exp11_ablation_seeds', []))} seed(s) each. If the reduction percentages "
+        "stay directionally consistent across policies, the finding is not an artifact of the specific "
+        "baseline policy chosen as the primary comparison."
+    )
+else:
+    st.info("Click **Run Baseline-Policy Ablation** to test sensitivity to the choice of uniform baseline policy.")
+
+st.markdown(
+    '<div class="psdt-section-heading">Raw Per-Seed Data Export (Deliverable 24)</div>',
+    unsafe_allow_html=True,
+)
+st.caption(
+    "Exports the raw per-seed, per-run metrics behind the primary comparison table above as a CSV, "
+    "so results can be independently re-checked, re-aggregated, or audited outside this dashboard."
+)
+export_results = st.session_state.get("exp11_results")
+if export_results:
+    export_rows = []
+    for strategy_name, run_list in export_results.items():
+        for run_metrics in run_list:
+            row = dict(run_metrics)
+            row["strategy"] = strategy_name
+            export_rows.append(row)
+    export_df = pd.DataFrame(export_rows)
+    cols = ["strategy"] + [c for c in export_df.columns if c != "strategy"]
+    export_df = export_df[cols]
+    st.dataframe(export_df, use_container_width=True, height=200)
+    csv_bytes = export_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="Download raw per-seed metrics (CSV)",
+        data=csv_bytes,
+        file_name="psdt_sprint11_raw_metrics.csv",
+        mime="text/csv",
+    )
+else:
+    st.info("Run **Run Controlled Experiment** above first to generate raw per-seed data to export.")
