@@ -1,0 +1,183 @@
+{
+  "generated_at_utc": "2026-07-24T18:37:19.131844+00:00",
+  "sensitivity": [
+    {
+      "parameter": "PT_baseline_profile",
+      "variation": "-10%",
+      "sync_reduction_pct": 33.72444444444444,
+      "energy_reduction_pct": 22.798489751887157,
+      "violation_diff_pp": -0.23034330011074197,
+      "mean_psm_proposed": 30.664295076080442,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "PT_baseline_profile",
+      "variation": "Default",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 29.75758360301986,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "-"
+    },
+    {
+      "parameter": "PT_baseline_profile",
+      "variation": "+10%",
+      "sync_reduction_pct": 42.3,
+      "energy_reduction_pct": 33.218856526428695,
+      "violation_diff_pp": -0.04761904761904762,
+      "mean_psm_proposed": 44.06557231699263,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Clock_drift_severity",
+      "variation": "Low",
+      "sync_reduction_pct": 39.32444444444444,
+      "energy_reduction_pct": 29.859892125134195,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.71843484711208,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Clock_drift_severity",
+      "variation": "Nominal",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 29.75758360301986,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "-"
+    },
+    {
+      "parameter": "Clock_drift_severity",
+      "variation": "High",
+      "sync_reduction_pct": 39.062222222222225,
+      "energy_reduction_pct": 29.617518878100764,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.59130330623472,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Network_variability_via_scenario",
+      "variation": "Scenario_A_Stable_net",
+      "sync_reduction_pct": 38.309999999999995,
+      "energy_reduction_pct": 28.231574973030643,
+      "violation_diff_pp": 0.022148394241417485,
+      "mean_psm_proposed": 34.47675181606454,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Network_variability_via_scenario",
+      "variation": "Scenario_B_Moderate_net",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 29.75758360301986,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "-"
+    },
+    {
+      "parameter": "Network_variability_via_scenario",
+      "variation": "Scenario_C_Challenging_net",
+      "sync_reduction_pct": 39.77222222222222,
+      "energy_reduction_pct": 30.4528478964395,
+      "violation_diff_pp": -0.07641196013289037,
+      "mean_psm_proposed": 39.26466641922711,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "SCE_state_boundaries",
+      "variation": "-10%",
+      "sync_reduction_pct": 44.17777777777778,
+      "energy_reduction_pct": 34.42629989212447,
+      "violation_diff_pp": -0.01993355481727574,
+      "mean_psm_proposed": 37.49148988903792,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "SCE_state_boundaries",
+      "variation": "Default",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 29.75758360301986,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "-"
+    },
+    {
+      "parameter": "SCE_state_boundaries",
+      "variation": "+10%",
+      "sync_reduction_pct": 33.32444444444444,
+      "energy_reduction_pct": 23.76822006472433,
+      "violation_diff_pp": -0.10188261351052048,
+      "mean_psm_proposed": 37.455146777195154,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Energy_coefficients",
+      "variation": "Lower_cost",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 28.08182018997107,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "Yes"
+    },
+    {
+      "parameter": "Energy_coefficients",
+      "variation": "Default",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 29.75758360301986,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "-"
+    },
+    {
+      "parameter": "Energy_coefficients",
+      "variation": "Higher_cost",
+      "sync_reduction_pct": 39.23777777777777,
+      "energy_reduction_pct": 31.357031414716392,
+      "violation_diff_pp": -0.13953488372093023,
+      "mean_psm_proposed": 37.66858629326076,
+      "conclusion_stable": "Yes"
+    }
+  ],
+  "ablation": [
+    {
+      "method": "A_Uniform",
+      "sync_messages_mean": 9000.0,
+      "sync_messages_n": 10,
+      "estimated_energy_j_mean": 185.39999999999688,
+      "violation_rate_pct_mean": 0.15946843853820597,
+      "mean_psm_mean": 37.68243738833794
+    },
+    {
+      "method": "B_Generic_Adaptive",
+      "sync_messages_mean": 6324.4,
+      "sync_messages_n": 10,
+      "estimated_energy_j_mean": 144.2471999999985,
+      "violation_rate_pct_mean": 0.05094130675526024,
+      "mean_psm_mean": 37.70128851498654
+    },
+    {
+      "method": "C_Full_PSM_System",
+      "sync_messages_mean": 5468.6,
+      "sync_messages_n": 10,
+      "estimated_energy_j_mean": 130.229439999999,
+      "violation_rate_pct_mean": 0.019933554817275746,
+      "mean_psm_mean": 37.66858629326076
+    }
+  ],
+  "ablation_config": {
+    "nodes": 30,
+    "duration_s": 300,
+    "scenario": "Scenario B: Moderate",
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ]
+  }
+}
