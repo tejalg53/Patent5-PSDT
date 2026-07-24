@@ -1,0 +1,299 @@
+{
+  "generated_at_utc": "2026-07-24T17:54:14.670637+00:00",
+  "reproducibility": {
+    "all_match": true,
+    "config": {
+      "nodes": 30,
+      "duration_s": 300.0,
+      "time_step_s": 1.0,
+      "scenario": "Scenario B: Moderate",
+      "seed": 42
+    },
+    "rows": [
+      {
+        "run_label": "Baseline",
+        "metric": "sync_messages",
+        "run_1": 9000,
+        "run_2": 9000,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "radio_active_time_s",
+        "run_1": 144.0000000000001,
+        "run_2": 144.0000000000001,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "estimated_energy_j",
+        "run_1": 185.39999999999688,
+        "run_2": 185.39999999999688,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "violation_rate_pct",
+        "run_1": 0.0,
+        "run_2": 0.0,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "state_transitions",
+        "run_1": 73,
+        "run_2": 73,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "mean_psm",
+        "run_1": 38.19985713307357,
+        "run_2": 38.19985713307357,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "min_psm",
+        "run_1": 3.261960472520066,
+        "run_2": 3.261960472520066,
+        "match": true
+      },
+      {
+        "run_label": "Baseline",
+        "metric": "full_PT_PE_PSM_history_all_nodes",
+        "run_1": "see hash",
+        "run_2": "see hash",
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "sync_messages",
+        "run_1": 5377,
+        "run_2": 5377,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "radio_active_time_s",
+        "run_1": 127.57600000000004,
+        "run_2": 127.57600000000004,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "estimated_energy_j",
+        "run_1": 129.9313999999991,
+        "run_2": 129.9313999999991,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "violation_rate_pct",
+        "run_1": 0.0,
+        "run_2": 0.0,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "state_transitions",
+        "run_1": 64,
+        "run_2": 64,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "mean_psm",
+        "run_1": 38.1061006856018,
+        "run_2": 38.1061006856018,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "min_psm",
+        "run_1": 0.09780220704271159,
+        "run_2": 0.09780220704271159,
+        "match": true
+      },
+      {
+        "run_label": "Proposed",
+        "metric": "full_PT_PE_PSM_history_all_nodes",
+        "run_1": "see hash",
+        "run_2": "see hash",
+        "match": true
+      }
+    ]
+  },
+  "invariant_audit": {
+    "total_observations_checked": 6000,
+    "invalid_observations": 0,
+    "invariant_violations_found": 0,
+    "target_met_zero_unexplained_violations": true
+  },
+  "traceability": {
+    "zones_traced": [
+      "Fingertip",
+      "Foot",
+      "Hand",
+      "Leg",
+      "Torso"
+    ],
+    "nodes": [
+      {
+        "node_id": "HN-001",
+        "body_zone": "Fingertip",
+        "actuator_type": "LRA",
+        "vibration_frequency_hz": 213.9,
+        "raw_clock_drift_ms": 0.19580791500173508,
+        "raw_network_delay_ms": 1.6401761078761021,
+        "raw_actuator_driver_delay_ms": 3.5799691414260324,
+        "raw_mechanical_startup_delay_ms": 15.763096576453824,
+        "dtce_PT_ms": 57.75,
+        "peee_PE_ms": 19.538873632881593,
+        "psme_PSM_ms": 38.21112636711841,
+        "psme_NPSM": 0.6616645258375482,
+        "psme_TU_pct": 33.83354741624519,
+        "sce_state": "RELAXED",
+        "arac_allocated_sync_interval_ms": 1200.0,
+        "arac_allocated_beacon_interval_ms": 100.0,
+        "arac_allocated_radio_wakeup_interval_ms": 500.0,
+        "arac_allocated_transmit_power_pct": 20.0,
+        "prap_resource_status": "Adaptive",
+        "final_battery_pct": 84.21296000000005,
+        "final_energy_consumed_j": 5.935199999999904,
+        "final_radio_active_time_s": 4.568000000000003
+      },
+      {
+        "node_id": "HN-007",
+        "body_zone": "Hand",
+        "actuator_type": "ERM",
+        "vibration_frequency_hz": 122.8,
+        "raw_clock_drift_ms": 0.13056545993188345,
+        "raw_network_delay_ms": 1.3477726076732197,
+        "raw_actuator_driver_delay_ms": 1.484025026253249,
+        "raw_mechanical_startup_delay_ms": 25.008975310607827,
+        "dtce_PT_ms": 66.15,
+        "peee_PE_ms": 32.070568366790496,
+        "psme_PSM_ms": 34.07943163320951,
+        "psme_NPSM": 0.5151841516736131,
+        "psme_TU_pct": 48.48158483263869,
+        "sce_state": "NOMINAL",
+        "arac_allocated_sync_interval_ms": 750.0,
+        "arac_allocated_beacon_interval_ms": 60.0,
+        "arac_allocated_radio_wakeup_interval_ms": 250.0,
+        "arac_allocated_transmit_power_pct": 50.0,
+        "prap_resource_status": "Adaptive",
+        "final_battery_pct": 88.5054800000012,
+        "final_energy_consumed_j": 3.972599999999991,
+        "final_radio_active_time_s": 2.784000000000002
+      },
+      {
+        "node_id": "HN-015",
+        "body_zone": "Torso",
+        "actuator_type": "ERM",
+        "vibration_frequency_hz": 197.1,
+        "raw_clock_drift_ms": 0.17999557252418275,
+        "raw_network_delay_ms": 22.860219225144004,
+        "raw_actuator_driver_delay_ms": 0.890665539294025,
+        "raw_mechanical_startup_delay_ms": 18.401615162414824,
+        "dtce_PT_ms": 77.175,
+        "peee_PE_ms": 41.2800181936482,
+        "psme_PSM_ms": 35.894981806351794,
+        "psme_NPSM": 0.4651115232439494,
+        "psme_TU_pct": 53.48884767560506,
+        "sce_state": "NOMINAL",
+        "arac_allocated_sync_interval_ms": 1300.0,
+        "arac_allocated_beacon_interval_ms": 60.0,
+        "arac_allocated_radio_wakeup_interval_ms": 250.0,
+        "arac_allocated_transmit_power_pct": 50.0,
+        "prap_resource_status": "Adaptive",
+        "final_battery_pct": 97.30888000000127,
+        "final_energy_consumed_j": 2.9555999999999867,
+        "final_radio_active_time_s": 2.704000000000002
+      },
+      {
+        "node_id": "HN-021",
+        "body_zone": "Leg",
+        "actuator_type": "ERM",
+        "vibration_frequency_hz": 147.5,
+        "raw_clock_drift_ms": 0.23297598969512204,
+        "raw_network_delay_ms": 14.251883468326424,
+        "raw_actuator_driver_delay_ms": 2.74661870369418,
+        "raw_mechanical_startup_delay_ms": 11.044511721366668,
+        "dtce_PT_ms": 71.66250000000001,
+        "peee_PE_ms": 26.30887783846398,
+        "psme_PSM_ms": 45.35362216153602,
+        "psme_NPSM": 0.6328780346978687,
+        "psme_TU_pct": 36.71219653021312,
+        "sce_state": "RELAXED",
+        "arac_allocated_sync_interval_ms": 2200.0,
+        "arac_allocated_beacon_interval_ms": 100.0,
+        "arac_allocated_radio_wakeup_interval_ms": 500.0,
+        "arac_allocated_transmit_power_pct": 20.0,
+        "prap_resource_status": "Adaptive",
+        "final_battery_pct": 92.52896000000071,
+        "final_energy_consumed_j": 3.355199999999983,
+        "final_radio_active_time_s": 3.5680000000000027
+      },
+      {
+        "node_id": "HN-027",
+        "body_zone": "Foot",
+        "actuator_type": "ERM",
+        "vibration_frequency_hz": 198.4,
+        "raw_clock_drift_ms": 0.16781373541368394,
+        "raw_network_delay_ms": 13.838909489401914,
+        "raw_actuator_driver_delay_ms": 2.126989009914013,
+        "raw_mechanical_startup_delay_ms": 11.561883325462846,
+        "dtce_PT_ms": 55.125,
+        "peee_PE_ms": 25.64606892825923,
+        "psme_PSM_ms": 29.47893107174077,
+        "psme_NPSM": 0.5347651895100367,
+        "psme_TU_pct": 46.52348104899634,
+        "sce_state": "NOMINAL",
+        "arac_allocated_sync_interval_ms": 1200.0,
+        "arac_allocated_beacon_interval_ms": 60.0,
+        "arac_allocated_radio_wakeup_interval_ms": 250.0,
+        "arac_allocated_transmit_power_pct": 50.0,
+        "prap_resource_status": "Adaptive",
+        "final_battery_pct": 85.71399999999991,
+        "final_energy_consumed_j": 3.929999999999986,
+        "final_radio_active_time_s": 4.800000000000003
+      }
+    ]
+  },
+  "baseline_fairness": {
+    "all_expected_matches_pass": true,
+    "checks": [
+      {
+        "check": "Node Initialization (node_id set identical)",
+        "result": "MATCH",
+        "pass": true
+      },
+      {
+        "check": "Body Zones / Actuator Distribution identical",
+        "result": "MATCH",
+        "pass": true
+      },
+      {
+        "check": "Random Seeds identical",
+        "result": "MATCH",
+        "pass": true
+      },
+      {
+        "check": "Scenario / Context Timeline identical (same scenario, duration; same time_step_s=1.0 passed to both constructors)",
+        "result": "MATCH",
+        "pass": true
+      },
+      {
+        "check": "Energy Model identical (same config.energy_model module used by both)",
+        "result": "MATCH",
+        "pass": true
+      },
+      {
+        "check": "Control Strategy DIFFERENT (as intended)",
+        "result": "MATCH",
+        "pass": true
+      }
+    ]
+  }
+}

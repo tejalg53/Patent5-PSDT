@@ -1,0 +1,5 @@
+PSDT v1.0 Patent 5 Experimental Validation Build
+Configuration ID: PSDT-V1-CFG-B08718D8
+Frozen Sprint 11 model version: PSDT v1.0-sim (Temporal Closed-Loop Model, frozen for Sprint 11)
+Git commit: 358e75805c3fa4b460a8fcbed7fc05f86338e992
+Generated: 2026-07-24T17:41:09.635928+00:00

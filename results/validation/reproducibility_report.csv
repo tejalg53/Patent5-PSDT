@@ -1,0 +1,17 @@
+run_label,metric,run_1,run_2,match
+Baseline,sync_messages,9000,9000,True
+Baseline,radio_active_time_s,144.0000000000001,144.0000000000001,True
+Baseline,estimated_energy_j,185.39999999999688,185.39999999999688,True
+Baseline,violation_rate_pct,0.0,0.0,True
+Baseline,state_transitions,73,73,True
+Baseline,mean_psm,38.19985713307357,38.19985713307357,True
+Baseline,min_psm,3.261960472520066,3.261960472520066,True
+Baseline,full_PT_PE_PSM_history_all_nodes,see hash,see hash,True
+Proposed,sync_messages,5377,5377,True
+Proposed,radio_active_time_s,127.57600000000004,127.57600000000004,True
+Proposed,estimated_energy_j,129.9313999999991,129.9313999999991,True
+Proposed,violation_rate_pct,0.0,0.0,True
+Proposed,state_transitions,64,64,True
+Proposed,mean_psm,38.1061006856018,38.1061006856018,True
+Proposed,min_psm,0.09780220704271159,0.09780220704271159,True
+Proposed,full_PT_PE_PSM_history_all_nodes,see hash,see hash,True
