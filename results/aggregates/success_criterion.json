@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "energy_reduced": true,
+  "messages_reduced": true,
+  "violation_diff_pp": -0.13953488372093023,
+  "tolerance_pp": 5.0,
+  "within_tolerance": true
+}

@@ -1,0 +1,114 @@
+{
+  "baseline": {
+    "Fingertip": {
+      "count": 6,
+      "mean_pt": 57.75,
+      "mean_pe": 26.828380499122144,
+      "mean_psm": 30.921619500877856,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 6,
+      "energy_j": 37.07999999999937
+    },
+    "Hand": {
+      "count": 4,
+      "mean_pt": 66.15,
+      "mean_pe": 36.14052365504232,
+      "mean_psm": 30.009476344957683,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 4,
+      "energy_j": 24.719999999999583
+    },
+    "Forearm": {
+      "count": 4,
+      "mean_pt": 71.66250000000001,
+      "mean_pe": 29.840867826425704,
+      "mean_psm": 41.82163217357431,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 4,
+      "energy_j": 24.719999999999583
+    },
+    "Torso": {
+      "count": 6,
+      "mean_pt": 77.175,
+      "mean_pe": 35.89831784753225,
+      "mean_psm": 41.27668215246775,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 6,
+      "energy_j": 37.07999999999937
+    },
+    "Leg": {
+      "count": 6,
+      "mean_pt": 71.66250000000001,
+      "mean_pe": 28.759136521475714,
+      "mean_psm": 42.90336347852429,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 6,
+      "energy_j": 37.07999999999937
+    },
+    "Foot": {
+      "count": 4,
+      "mean_pt": 55.125,
+      "mean_pe": 31.84387210297958,
+      "mean_psm": 23.28112789702042,
+      "mean_sync_interval_ms": 1000.0,
+      "sync_events_this_step": 4,
+      "energy_j": 24.719999999999583
+    }
+  },
+  "proposed": {
+    "Fingertip": {
+      "count": 6,
+      "mean_pt": 57.75,
+      "mean_pe": 30.42742296410753,
+      "mean_psm": 27.32257703589247,
+      "mean_sync_interval_ms": 750.0,
+      "sync_events_this_step": 5,
+      "energy_j": 31.060199999999682
+    },
+    "Hand": {
+      "count": 4,
+      "mean_pt": 66.15,
+      "mean_pe": 33.57383749189332,
+      "mean_psm": 32.576162508106684,
+      "mean_sync_interval_ms": 843.75,
+      "sync_events_this_step": 4,
+      "energy_j": 20.630599999999777
+    },
+    "Forearm": {
+      "count": 4,
+      "mean_pt": 71.66250000000001,
+      "mean_pe": 24.567180809179952,
+      "mean_psm": 47.09531919082006,
+      "mean_sync_interval_ms": 1575.0,
+      "sync_events_this_step": 2,
+      "energy_j": 18.775399999999877
+    },
+    "Torso": {
+      "count": 6,
+      "mean_pt": 77.175,
+      "mean_pe": 36.91701904963851,
+      "mean_psm": 40.257980950361485,
+      "mean_sync_interval_ms": 1625.0,
+      "sync_events_this_step": 4,
+      "energy_j": 20.27539999999994
+    },
+    "Leg": {
+      "count": 6,
+      "mean_pt": 71.66250000000001,
+      "mean_pe": 28.875068376362623,
+      "mean_psm": 42.78743162363739,
+      "mean_sync_interval_ms": 1650.0,
+      "sync_events_this_step": 2,
+      "energy_j": 20.052599999999927
+    },
+    "Foot": {
+      "count": 4,
+      "mean_pt": 55.125,
+      "mean_pe": 33.423700358862995,
+      "mean_psm": 21.70129964113701,
+      "mean_sync_interval_ms": 1050.0,
+      "sync_events_this_step": 3,
+      "energy_j": 19.137199999999893
+    }
+  }
+}
