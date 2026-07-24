@@ -1,0 +1,34 @@
+{
+  "generated_at_utc": "2026-07-24T18:43:14.555416+00:00",
+  "expected_runs": 300,
+  "completed_runs": 300,
+  "failed_runs": 0,
+  "excluded_runs": 0,
+  "runtime_s": 151.88975930213928,
+  "scenarios": [
+    "Scenario A: Stable",
+    "Scenario B: Moderate",
+    "Scenario C: Dynamic/Challenging"
+  ],
+  "node_counts": [
+    10,
+    20,
+    30,
+    40,
+    50
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "duration_s": 300.0,
+  "time_step_s": 1.0
+}
