@@ -88,6 +88,17 @@ class ControlledExperiment:
         engine.run_to_completion()
         return engine
 
+    def run_generic_adaptive(self) -> DigitalTwinSimulationEngine:
+        """Sprint 12 Deliverable 8 (ablation Method B): adaptive resource
+        control driven by a single population-mean NPSM instead of each
+        node's own body-zone-specific NPSM. See CentralSynchronizationCoordinator
+        (generic_control=True) for the exact mechanism. Does not alter the
+        frozen 'uniform' or 'adaptive' (full Patent 5 / Method C) code paths."""
+        engine = self._make_engine("generic_adaptive")
+        engine.initialize()
+        engine.run_to_completion()
+        return engine
+
     def run_pair(self):
         """Returns (baseline_engine, proposed_engine), both seeded and
         configured identically apart from control_mode (Deliverable 4)."""

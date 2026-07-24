@@ -115,7 +115,7 @@ class DigitalTwinSimulationEngine:
             raise ValueError(f"Unknown scenario: {scenario!r}")
         if network_profile not in NETWORK_PROFILES:
             raise ValueError(f"Unknown network profile: {network_profile!r}")
-        if control_mode not in ("adaptive", "uniform"):
+        if control_mode not in ("adaptive", "uniform", "generic_adaptive"):
             raise ValueError(f"Unknown control_mode: {control_mode!r}")
         if control_mode == "uniform" and baseline_policy not in UNIFORM_POLICIES:
             raise ValueError(f"Unknown baseline_policy: {baseline_policy!r}")
@@ -156,7 +156,9 @@ class DigitalTwinSimulationEngine:
         self.finished = False
 
     def initialize(self):
-        self.coordinator = CentralSynchronizationCoordinator(seed=self.seed)
+        self.coordinator = CentralSynchronizationCoordinator(
+            seed=self.seed, generic_control=(self.control_mode == "generic_adaptive"),
+        )
         nodes = generate_nodes(self.num_nodes, self.seed)
         self.coordinator.register_nodes(nodes)
 

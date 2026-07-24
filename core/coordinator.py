@@ -33,6 +33,7 @@ processing pipeline until Sprint 9. SCE (Sprint 8) and ARAC (Sprint 9)
 are now both fully implemented above.
 """
 
+import statistics
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -69,7 +70,15 @@ class CommunicationLogEntry:
 class CentralSynchronizationCoordinator:
     """A single digital twin's coordinator instance."""
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, generic_control: bool = False):
+        # Sprint 12 Deliverable 8 (ablation Method B: "Generic Adaptive").
+        # Default False reproduces the exact frozen Sprint 10/11 behavior
+        # unchanged. When True, run_sce_pass() classifies every node using
+        # one population-mean NPSM instead of each node's own per-zone NPSM,
+        # so resource control still adapts to overall system state but is no
+        # longer body-zone-differentiated. PT/PE/PSM are still computed and
+        # stored per-zone for diagnostics either way.
+        self.generic_control = generic_control
         self.registry: Dict[str, object] = {}
         self.zone_index: Dict[str, List[str]] = {}
         self.status_repository: Dict[str, PSSP] = {}
@@ -361,13 +370,23 @@ class CentralSynchronizationCoordinator:
         left untouched rather than reset to fabricated values. Returns
         the sce_audit dict (node_id -> SCEResult).
         """
+        generic_npsm = None
+        if self.generic_control:
+            valid_npsm = [n.normalized_psm for n in self.registry.values() if n.normalized_psm is not None]
+            if valid_npsm:
+                generic_npsm = statistics.fmean(valid_npsm)
+
         for node_id, node in self.registry.items():
             if node.normalized_psm is None:
                 continue
 
+            npsm_for_classification = generic_npsm if self.generic_control else node.normalized_psm
+            if npsm_for_classification is None:
+                continue
+
             previous_state = node.sync_state if node.sync_state != "Unclassified" else None
             result = self.sce.safe_classify(
-                npsm=node.normalized_psm,
+                npsm=npsm_for_classification,
                 previous_state=previous_state,
                 pending_state=node.pending_state,
                 persistence_counter=node.persistence_counter,
