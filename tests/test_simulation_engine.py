@@ -97,7 +97,7 @@ class TestEnergyAccounting(unittest.TestCase):
     under identical energy coefficients."""
 
     def test_dynamic_scenario_consumes_more_energy_than_stable(self):
-        common = dict(num_nodes=15, duration_s=90, time_step_s=1.0, seed=42)
+        common = dict(num_nodes=20, duration_s=90, time_step_s=1.0, seed=42)
 
         stable = DigitalTwinSimulationEngine(scenario="Scenario A: Stable", **common)
         stable.initialize()

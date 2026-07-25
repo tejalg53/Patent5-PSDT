@@ -220,7 +220,7 @@ class TestSCECoordinatorIntegration(unittest.TestCase):
         self.assertEqual(history_a, history_b)
 
     def test_state_history_is_bounded_rolling_buffer(self):
-        _, coordinator = self._build(num_nodes=5, seed=1)
+        _, coordinator = self._build(num_nodes=10, seed=1)
         from core.node import MAX_STATE_HISTORY_LENGTH
         for t in range(1, MAX_STATE_HISTORY_LENGTH + 20):
             coordinator.run_communication_cycle(simulation_timestamp=float(t))
