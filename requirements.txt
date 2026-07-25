@@ -3,3 +3,4 @@ plotly
 networkx
 pandas
 numpy
+kaleido

@@ -1,0 +1,17 @@
+{
+  "model_version": "PSDT v1.0 Patent 5 Experimental Validation Build",
+  "configuration_id": "PSDT-V1-CFG-B08718D8",
+  "generation_timestamp_utc": "2026-07-25T15:14:21.353186+00:00",
+  "graph": "Sync messages by scenario",
+  "node_count": 30,
+  "seeds": "42-51 (10)",
+  "strategies": [
+    "Uniform Baseline",
+    "PSM-Adaptive"
+  ],
+  "scenarios": [
+    "Scenario A: Stable",
+    "Scenario B: Moderate",
+    "Scenario C: Dynamic/Challenging"
+  ]
+}
