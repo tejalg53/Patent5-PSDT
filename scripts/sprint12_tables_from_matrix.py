@@ -211,6 +211,32 @@ zone_exp = ControlledExperiment(seed=SEEDS[0], nodes=PRIMARY_NODES, duration=DUR
 zone_base_engine, zone_prop_engine = zone_exp.run_pair()
 zone_result = run_body_zone_experiment(zone_base_engine, zone_prop_engine)
 
+def _zone_violation_rates(engine) -> dict:
+    """Per-zone violation rate (%): fraction of observed PSM<0 samples,
+    using the same definition as core.experiment_metrics.compute_run_metrics
+    (Deliverable 15 fix: body_zone_summary() does not expose this, so it is
+    derived here directly from the same already-completed run's history --
+    no re-simulation, no changed model logic)."""
+    counts, violations = {}, {}
+    registry = engine.coordinator.registry
+    for node_id, series in engine.history.node_series.items():
+        zone = registry[node_id].body_zone
+        for psm in series["PSM"]:
+            if psm is None:
+                continue
+            counts[zone] = counts.get(zone, 0) + 1
+            if psm < 0:
+                violations[zone] = violations.get(zone, 0) + 1
+    return {
+        zone: (violations.get(zone, 0) / counts[zone] * 100.0 if counts.get(zone) else 0.0)
+        for zone in counts
+    }
+
+zone_violation_rate = {
+    "baseline": _zone_violation_rates(zone_base_engine),
+    "proposed": _zone_violation_rates(zone_prop_engine),
+}
+
 body_zone_rows = []
 zones = sorted(zone_result["proposed"].keys())
 for zone in zones:
@@ -223,10 +249,10 @@ for zone in zones:
         "proposed_mean_pt_ms": p.get("mean_pt"),
         "proposed_mean_pe_ms": p.get("mean_pe"),
         "proposed_mean_psm_ms": p.get("mean_psm"),
-        "baseline_energy_per_node_j": b.get("mean_energy_j") or b.get("energy_per_node_j"),
-        "proposed_energy_per_node_j": p.get("mean_energy_j") or p.get("energy_per_node_j"),
-        "baseline_violation_rate_pct": b.get("violation_rate_pct"),
-        "proposed_violation_rate_pct": p.get("violation_rate_pct"),
+        "baseline_energy_per_node_j": (b["energy_j"] / b["count"]) if b.get("count") else None,
+        "proposed_energy_per_node_j": (p["energy_j"] / p["count"]) if p.get("count") else None,
+        "baseline_violation_rate_pct": zone_violation_rate["baseline"].get(zone),
+        "proposed_violation_rate_pct": zone_violation_rate["proposed"].get(zone),
     })
     print(f"  {zone:10s} PT={p.get('mean_pt')}  PE={p.get('mean_pe')}  PSM={p.get('mean_psm')}  "
           f"syncInterval base={b.get('mean_sync_interval_ms')}->prop={p.get('mean_sync_interval_ms')}")
