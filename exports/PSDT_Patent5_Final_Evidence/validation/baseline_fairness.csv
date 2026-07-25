@@ -1,0 +1,7 @@
+check,result,pass
+Node Initialization (node_id set identical),MATCH,True
+Body Zones / Actuator Distribution identical,MATCH,True
+Random Seeds identical,MATCH,True
+"Scenario / Context Timeline identical (same scenario, duration; same time_step_s=1.0 passed to both constructors)",MATCH,True
+Energy Model identical (same config.energy_model module used by both),MATCH,True
+Control Strategy DIFFERENT (as intended),MATCH,True

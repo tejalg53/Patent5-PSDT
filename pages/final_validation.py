@@ -157,3 +157,37 @@ for i, name in enumerate(fig_names):
     if os.path.exists(p):
         fig_cols[i % 3].image(p, caption=name.replace("_", " ").title(), use_container_width=True)
 
+
+st.divider()
+st.subheader("Export Complete Evidence Package (Deliverable 20)")
+st.caption(
+    "Builds PSDT_Patent5_Final_Evidence/ (README + configuration/ + raw_data/ + summaries/ + "
+    "validation/ + figures/) from the artifacts already on disk, plus a matching .zip."
+)
+EXPORT_SCRIPT = os.path.join(ROOT, "scripts", "sprint12_evidence_export.py")
+ZIP_PATH = os.path.join(ROOT, "exports", "PSDT_Patent5_Final_Evidence.zip")
+
+if st.button("Export Final Evidence Package"):
+    import subprocess
+    with st.spinner("Assembling evidence package..."):
+        proc = subprocess.run(
+            [sys.executable, EXPORT_SCRIPT], cwd=ROOT,
+            capture_output=True, text=True,
+        )
+    if proc.returncode == 0:
+        st.success("Evidence package assembled successfully.")
+        st.code(proc.stdout[-2000:], language="text")
+    else:
+        st.error("Evidence export failed -- see log below.")
+        st.code((proc.stdout + proc.stderr)[-3000:], language="text")
+
+if os.path.exists(ZIP_PATH):
+    with open(ZIP_PATH, "rb") as f:
+        st.download_button(
+            "Download PSDT_Patent5_Final_Evidence.zip",
+            data=f.read(),
+            file_name="PSDT_Patent5_Final_Evidence.zip",
+            mime="application/zip",
+        )
+else:
+    st.info("No package has been exported yet in this session. Click the button above to build one.")

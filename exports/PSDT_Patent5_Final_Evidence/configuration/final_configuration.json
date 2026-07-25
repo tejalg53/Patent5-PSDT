@@ -1,0 +1,441 @@
+{
+  "arac_parameters": {
+    "BEACON_INTERVAL_MS_BY_STATE": {
+      "ELEVATED": 40.0,
+      "IMMEDIATE": 20.0,
+      "NOMINAL": 60.0,
+      "RELAXED": 100.0
+    },
+    "DEFAULT_BEACON_INTERVAL_MS": 60.0,
+    "DEFAULT_RADIO_WAKEUP_INTERVAL_MS": 250.0,
+    "DEFAULT_SYNC_INTERVAL_MS": 1000.0,
+    "DEFAULT_TRANSMIT_POWER_LEVEL": "Medium",
+    "DEFAULT_TRANSMIT_POWER_PCT": 50.0,
+    "DEFAULT_TRIGGER_OFFSET_MS": 0.0,
+    "DEFAULT_ZONE_SYNC_SCALE": 1.0,
+    "ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL": {
+      "High": 0.18,
+      "Low": 0.05,
+      "Maximum": 0.25,
+      "Medium": 0.1
+    },
+    "FIXED_BASELINE_BEACON_INTERVAL_MS": 60.0,
+    "FIXED_BASELINE_RADIO_WAKEUP_INTERVAL_MS": 250.0,
+    "FIXED_BASELINE_SYNC_INTERVAL_MS": 1000.0,
+    "FIXED_BASELINE_TRANSMIT_POWER_LEVEL": "Medium",
+    "FIXED_BASELINE_TRANSMIT_POWER_PCT": 50.0,
+    "RADIO_WAKEUP_INTERVAL_MS_BY_STATE": {
+      "ELEVATED": 100.0,
+      "IMMEDIATE": 20.0,
+      "NOMINAL": 250.0,
+      "RELAXED": 500.0
+    },
+    "RADIO_WAKE_DURATION_S": 0.004,
+    "SYNC_INTERVAL_MS_BY_STATE": {
+      "ELEVATED": 500.0,
+      "IMMEDIATE": 200.0,
+      "NOMINAL": 1000.0,
+      "RELAXED": 2000.0
+    },
+    "TRANSMIT_POWER_LEVEL_BY_STATE": {
+      "ELEVATED": "High",
+      "IMMEDIATE": "Maximum",
+      "NOMINAL": "Medium",
+      "RELAXED": "Low"
+    },
+    "TRANSMIT_POWER_PCT_BY_STATE": {
+      "ELEVATED": 80.0,
+      "IMMEDIATE": 100.0,
+      "NOMINAL": 50.0,
+      "RELAXED": 20.0
+    },
+    "ZONE_SYNC_SCALE": {
+      "Fingertip": 0.6,
+      "Foot": 1.2,
+      "Forearm": 0.9,
+      "Hand": 0.75,
+      "Leg": 1.1,
+      "Torso": 1.3
+    }
+  },
+  "baseline_policy": {
+    "DEFAULT_SCALABILITY_NODE_COUNTS": [
+      10,
+      20,
+      30,
+      40,
+      50
+    ],
+    "DEFAULT_SCALABILITY_SEED_COUNT": 3,
+    "DEFAULT_SEED_LIST": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "DEFAULT_UNIFORM_POLICY": "Uniform-Moderate",
+    "DISTURBANCE_END_FRACTION": 0.5,
+    "DISTURBANCE_START_FRACTION": 0.3333333333333333,
+    "FIXED_BASELINE_BEACON_INTERVAL_MS": 60.0,
+    "FIXED_BASELINE_RADIO_WAKEUP_INTERVAL_MS": 250.0,
+    "FIXED_BASELINE_SYNC_INTERVAL_MS": 1000.0,
+    "FIXED_BASELINE_TRANSMIT_POWER_LEVEL": "Medium",
+    "FIXED_BASELINE_TRANSMIT_POWER_PCT": 50.0,
+    "FULL_SEED_LIST": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ],
+    "MODEL_VERSION": "PSDT v1.0-sim (Temporal Closed-Loop Model, frozen for Sprint 11)",
+    "RECOVERY_PERSISTENCE_STEPS": 5,
+    "UNIFORM_POLICIES": {
+      "Uniform-Conservative": {
+        "beacon_interval_ms": 40.0,
+        "description": "A stricter fixed policy (ELEVATED-equivalent fixed settings) applied uniformly to every node, regardless of state.",
+        "radio_wakeup_interval_ms": 100.0,
+        "sync_interval_ms": 500.0,
+        "transmit_power_level": "High",
+        "transmit_power_pct": 80.0
+      },
+      "Uniform-Moderate": {
+        "beacon_interval_ms": 60.0,
+        "description": "Sprint 9 fixed pre-ARAC baseline profile (NOMINAL-equivalent fixed settings).",
+        "radio_wakeup_interval_ms": 250.0,
+        "sync_interval_ms": 1000.0,
+        "transmit_power_level": "Medium",
+        "transmit_power_pct": 50.0
+      }
+    },
+    "UNIFORM_POLICY_OPTIONS": [
+      "Uniform-Moderate",
+      "Uniform-Conservative"
+    ],
+    "VIOLATION_RATE_TOLERANCE_PP": 5.0
+  },
+  "configuration_id": "PSDT-V1-CFG-B08718D8",
+  "configuration_sha256": "B08718D8EDA5BCF6015549CBDAFA026E6E4BA48D60ADFAC2BBEF337A845E9ADB",
+  "dtce_parameters": {
+    "formula": "PTz(t) = PTbase,z x Ff x Fa x UCF x Fm x Fe (see core/dtce.py DynamicThresholdCharacterizationEngine.compute_threshold)",
+    "threshold_coefficients": {
+      "ACTUATOR_FACTORS": {
+        "ERM": 1.05,
+        "LRA": 1.0,
+        "Piezo": 0.95
+      },
+      "BASE_THRESHOLDS_MS": {
+        "Fingertip": 55.0,
+        "Foot": 50.0,
+        "Forearm": 65.0,
+        "Hand": 60.0,
+        "Leg": 65.0,
+        "Torso": 70.0
+      },
+      "CALIBRATION_FACTORS": {
+        "High Sensitivity": 0.9,
+        "Low Sensitivity": 1.1,
+        "Standard": 1.0
+      },
+      "CUSTOM_CALIBRATION_BOUNDS": [
+        0.8,
+        1.2
+      ],
+      "ENVIRONMENT_FACTORS": {
+        "High vibration/noise": 1.08,
+        "Low disturbance": 0.98,
+        "Normal": 1.0
+      },
+      "FREQUENCY_BAND_HIGH_HZ": 250.0,
+      "FREQUENCY_BAND_LOW_HZ": 80.0,
+      "FREQUENCY_FACTORS": {
+        "high": 0.95,
+        "low": 1.05,
+        "nominal": 1.0
+      },
+      "MOTION_FACTORS": {
+        "Running": 1.1,
+        "Stationary": 1.0,
+        "Walking": 1.05
+      }
+    },
+    "zone_topology": {
+      "ACTUATOR_DRIVER_DELAY_RANGE": [
+        1.0,
+        3.0
+      ],
+      "ACTUATOR_FREQUENCY_RANGE": {
+        "ERM": [
+          100.0,
+          200.0
+        ],
+        "LRA": [
+          150.0,
+          250.0
+        ]
+      },
+      "BATTERY_RANGE": [
+        85.0,
+        100.0
+      ],
+      "CLOCK_DRIFT_RANGE": [
+        0.5,
+        4.0
+      ],
+      "MECHANICAL_DELAY_RANGE": [
+        10.0,
+        25.0
+      ],
+      "NETWORK_DELAY_RANGE": [
+        2.0,
+        12.0
+      ],
+      "NODE_COUNT_OPTIONS": [
+        10,
+        20,
+        30,
+        40,
+        50
+      ],
+      "SYNC_INTERVAL_RANGE": [
+        0.5,
+        2.0
+      ],
+      "ZONE_ACTUATOR": {
+        "Fingertip": "LRA",
+        "Foot": "ERM",
+        "Forearm": "ERM",
+        "Hand": "ERM",
+        "Leg": "ERM",
+        "Torso": "ERM"
+      },
+      "ZONE_ORDER": [
+        "Fingertip",
+        "Hand",
+        "Forearm",
+        "Torso",
+        "Leg",
+        "Foot"
+      ],
+      "ZONE_PURPOSE": {
+        "Fingertip": "High tactile sensitivity",
+        "Foot": "Distinct lower-body tactile region",
+        "Forearm": "Intermediate sensitivity",
+        "Hand": "High/moderate sensitivity",
+        "Leg": "Intermediate/lower sensitivity",
+        "Torso": "More tolerant region"
+      },
+      "ZONE_WEIGHTS": {
+        "Fingertip": 3,
+        "Foot": 2,
+        "Forearm": 2,
+        "Hand": 2,
+        "Leg": 3,
+        "Torso": 3
+      }
+    }
+  },
+  "energy_model": {
+    "NODE_BATTERY_CAPACITY_JOULES": 500.0,
+    "PRAP_APPLY_ENERGY_J": 0.004,
+    "SYNC_EVENT_ENERGY_J": 0.015
+  },
+  "frozen_sprint11_model_version": "PSDT v1.0-sim (Temporal Closed-Loop Model, frozen for Sprint 11)",
+  "git_commit": "358e75805c3fa4b460a8fcbed7fc05f86338e992",
+  "model_version": "PSDT v1.0 Patent 5 Experimental Validation Build",
+  "peee_parameters": {
+    "error_model_defaults_and_bounds": {
+      "ACTUATOR_AD_PROFILE_FACTOR": {
+        "ERM": 1.3,
+        "LRA": 1.0,
+        "Piezo": 0.7
+      },
+      "ACTUATOR_MD_PROFILE_FACTOR": {
+        "ERM": 1.2,
+        "LRA": 1.0,
+        "Piezo": 0.5
+      },
+      "AD_BOUNDS_MS": [
+        0.0,
+        10.0
+      ],
+      "AD_JITTER_STD_MS": 0.05,
+      "CLOCK_DRIFT_BOUNDS_MS": [
+        0.0,
+        50.0
+      ],
+      "CLOCK_DRIFT_GROWTH_MS_PER_S": 0.01,
+      "DEFAULT_NETWORK_CONDITION": "Nominal",
+      "DEFAULT_PE_MODEL": "additive",
+      "DEFAULT_WEIGHTS": {
+        "AD": 1.0,
+        "CD": 1.0,
+        "MD": 1.0,
+        "ND": 1.0
+      },
+      "MD_BOUNDS_MS": [
+        0.0,
+        40.0
+      ],
+      "MD_JITTER_STD_MS": 0.3,
+      "NETWORK_CONDITION_ADJUSTMENT_MS": {
+        "Congested": 3.0,
+        "Degraded": 6.0,
+        "Nominal": 0.0,
+        "Optimal": -1.0
+      },
+      "NETWORK_DELAY_BOUNDS_MS": [
+        0.0,
+        30.0
+      ],
+      "NETWORK_JITTER_STD_MS": 1.0,
+      "NETWORK_REFERENCE_DELAY_MS": 5.0,
+      "NETWORK_RESIDUAL_BOUNDS_MS": [
+        0.0,
+        20.0
+      ],
+      "PE_MODELS": [
+        "additive",
+        "weighted"
+      ],
+      "WEIGHT_BOUNDS": [
+        0.0,
+        5.0
+      ]
+    },
+    "formula": "PEz(t) estimated from clock-drift (CD), network-residual (ND), actuator-driver-delay (AD), and mechanical-startup-delay (MD) components combined per the selected error model (default 'additive'), see core/peee.py PerceivedErrorEstimationEngine.compute_error"
+  },
+  "psme_parameters": {
+    "note": "PSME (core/psme.py) is pure arithmetic on PT/PE; it has no separate tunable coefficients of its own.",
+    "npsm_formula": "NPSMz(t) = PSMz(t) / PTz(t)",
+    "psm_formula": "PSMz(t) = PTz(t) - PEz(t)",
+    "tu_formula": "TUz(t) = (PEz(t) / PTz(t)) * 100"
+  },
+  "python_version": "3.12.1 (main, Mar 11 2026, 12:17:56) [GCC 13.3.0]",
+  "sce_parameters": {
+    "boundaries_and_hysteresis": {
+      "ELEVATED_MIN": 0.0,
+      "HYSTERESIS_MARGIN": 0.03,
+      "NOMINAL_MIN": 0.3,
+      "RELAXED_MIN": 0.6,
+      "STATE_HISTORY_LENGTH": 50,
+      "STATE_PERSISTENCE_CYCLES": 3
+    },
+    "state_labels": {
+      "ELEVATED": "ELEVATED",
+      "IMMEDIATE": "IMMEDIATE",
+      "NOMINAL": "NOMINAL",
+      "RELAXED": "RELAXED"
+    },
+    "state_order_most_to_least_relaxed": [
+      "IMMEDIATE",
+      "ELEVATED",
+      "NOMINAL",
+      "RELAXED"
+    ]
+  },
+  "simulation_parameters": {
+    "DEFAULT_DURATION_S": 300,
+    "DEFAULT_NETWORK_PROFILE": "Moderate",
+    "DEFAULT_SCENARIO": "Scenario B: Moderate",
+    "DEFAULT_SEED": 42,
+    "DEFAULT_TIME_STEP_S": 1.0,
+    "DISTURBANCE_CLOCK_DRIFT_SPIKE_MS": 8.0,
+    "DISTURBANCE_ENVIRONMENT_STATE": "High vibration/noise",
+    "DISTURBANCE_NETWORK_JITTER_SPIKE_MS": 15.0,
+    "DURATION_OPTIONS_S": [
+      60,
+      120,
+      300,
+      600
+    ],
+    "EXPERIMENT_HISTORY_MAX_STEPS": null,
+    "INTERACTIVE_HISTORY_MAX_STEPS": 300,
+    "NETWORK_PROFILES": {
+      "Congested": {
+        "condition": "Congested",
+        "extra_jitter_std_ms": 2.0
+      },
+      "Moderate": {
+        "condition": "Nominal",
+        "extra_jitter_std_ms": 0.8
+      },
+      "Stable": {
+        "condition": "Optimal",
+        "extra_jitter_std_ms": 0.3
+      }
+    },
+    "NETWORK_PROFILE_OPTIONS": [
+      "Stable",
+      "Moderate",
+      "Congested"
+    ],
+    "RESYNC_RESIDUAL_MAX_MS": 0.25,
+    "RESYNC_RESIDUAL_MIN_MS": 0.02,
+    "SCENARIOS": {
+      "Scenario A: Stable": {
+        "description": "Stationary, stable network, low disturbance.",
+        "timeline": [
+          [
+            0.0,
+            "Stationary",
+            "Stable",
+            "Low disturbance"
+          ]
+        ]
+      },
+      "Scenario B: Moderate": {
+        "description": "Walking, moderate network variation, normal disturbance.",
+        "timeline": [
+          [
+            0.0,
+            "Walking",
+            "Moderate",
+            "Normal"
+          ]
+        ]
+      },
+      "Scenario C: Dynamic/Challenging": {
+        "description": "Stationary to Walking to Running; Stable to Moderate to Congested network; rising disturbance.",
+        "timeline": [
+          [
+            0.0,
+            "Stationary",
+            "Stable",
+            "Normal"
+          ],
+          [
+            0.3333333333333333,
+            "Walking",
+            "Moderate",
+            "Normal"
+          ],
+          [
+            0.6666666666666666,
+            "Running",
+            "Congested",
+            "High vibration/noise"
+          ]
+        ]
+      }
+    },
+    "SCENARIO_OPTIONS": [
+      "Scenario A: Stable",
+      "Scenario B: Moderate",
+      "Scenario C: Dynamic/Challenging"
+    ],
+    "TIME_STEP_OPTIONS_S": [
+      0.5,
+      1.0,
+      2.0,
+      5.0
+    ]
+  },
+  "timestamp_utc": "2026-07-24T17:41:09.635928+00:00"
+}
