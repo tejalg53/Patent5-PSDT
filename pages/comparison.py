@@ -43,7 +43,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.caption(
-    "Sprint 11 controlled experimental comparison: Uniform Synchronization baseline "
+    "Controlled experimental comparison: Uniform Synchronization baseline "
     "vs PSM-Adaptive proposed method, run in identical paired conditions (same seed, "
     "node count, scenario, duration - only the control strategy differs)."
 )
@@ -98,7 +98,7 @@ if not results:
     st.info(
         "Configure the experiment above and click **Run Controlled Experiment** to generate the "
         "comparison table and charts. No results are hard-coded here; every value comes from a "
-        "completed simulation run (Sprint 11 Deliverable 13)."
+        "completed simulation run (Deliverable 13)."
     )
 else:
     baseline_runs = results["baseline"]
@@ -166,7 +166,7 @@ else:
     st.dataframe(table, use_container_width=True, hide_index=True)
     st.caption(
         "Values are means across all paired seeds run above; nothing here is hard-coded "
-        "(Sprint 11 Deliverable 13). Reduction % = (Baseline - Proposed) / Baseline x 100. "
+        "(Deliverable 13). Reduction % = (Baseline - Proposed) / Baseline x 100. "
         "Estimated Energy is modeled/simulated energy, not a hardware power measurement."
     )
 
@@ -592,14 +592,14 @@ if export_results:
     st.download_button(
         label="Download raw per-seed metrics (CSV)",
         data=csv_bytes,
-        file_name="psdt_sprint11_raw_metrics.csv",
+        file_name="psdt_comparison_raw_metrics.csv",
         mime="text/csv",
     )
 else:
     st.info("Run **Run Controlled Experiment** above first to generate raw per-seed data to export.")
 
 st.markdown(
-    '<div class="psdt-section-heading">Sprint 11 Summary (Deliverable 28)</div>',
+    '<div class="psdt-section-heading">Validation Summary (Deliverable 28)</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -627,12 +627,12 @@ largest scale tested (50 nodes) the Proposed method's violation rate was higher 
 (0.186% vs 0.055%, both still small in absolute terms), and in the Stable scenario specifically the Proposed
 method showed a slightly higher violation rate than Baseline in the per-scenario sweep. Neither the frozen
 model's equations, thresholds, nor energy coefficients were modified in response to these results; the one
-genuine bug found during this sprint (uniform baseline mode not being respected in the simulation engine)
+genuine bug found during development (uniform baseline mode not being respected in the simulation engine)
 was documented, fixed, and the model version was carried forward as PSDT v1.0-sim before any results were
 examined, per Deliverable 1.
 """
 )
 st.caption(
     "This summary reflects results actually produced by the experiment engine in this dashboard and the "
-    "accompanying terminal runs during this sprint; it is not a hard-coded or pre-written conclusion."
+    "accompanying terminal runs during development; it is not a hard-coded or pre-written conclusion."
 )
