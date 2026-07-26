@@ -31,7 +31,7 @@ from config.resource_profiles import (
     FIXED_BASELINE_TRANSMIT_POWER_PCT,
 )
 
-MODEL_VERSION = "PSDT v1.0-sim (Temporal Closed-Loop Model, frozen for Sprint 11)"
+MODEL_VERSION = "PSDT v1.0-sim (Temporal Closed-Loop Model)"
 
 UNIFORM_POLICIES = {
     "Uniform-Moderate": {
