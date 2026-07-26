@@ -33,7 +33,7 @@ st.caption(
     "A time-evolving closed-loop simulation: Node State(t) -> DTCE -> PEEE -> "
     "PSME -> SCE -> ARAC -> Resource Action -> Node State(t+dt). Simulated time "
     "is decoupled from wall-clock time, so a full run completes in well under a "
-    "second regardless of the configured duration (Deliverable 2)."
+    "second regardless of the configured duration."
 )
 
 ctrl_cols = st.columns(6)
@@ -80,7 +80,7 @@ if step_clicked and s10_engine is not None:
     s10_engine.step()
 
 if pause_clicked and s10_engine is not None:
-    st.info("Run completes synchronously in one click since simulated time is decoupled from wall-clock time (Deliverable 2); use Step to advance one cycle at a time instead.")
+    st.info("Run completes synchronously in one click since simulated time is decoupled from wall-clock time; use Step to advance one cycle at a time instead.")
 
 if s10_engine is None:
     st.info("Click Initialize to create a Digital Twin simulation run.")
@@ -217,7 +217,7 @@ else:
 
     st.markdown("---")
     st.markdown("### Disturbance Injection")
-    st.caption("Applies immediately to the current simulation state; effects propagate through the next Step/Run (Deliverable 28).")
+    st.caption("Applies immediately to the current simulation state; effects propagate through the next Step/Run.")
     s10_dist_target = st.selectbox("Target", ["ALL"] + s10_node_ids, key="s10_dist_target")
     s10_target_id = None if s10_dist_target == "ALL" else s10_dist_target
     dist_cols = st.columns(4)
