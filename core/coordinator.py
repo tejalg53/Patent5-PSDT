@@ -51,11 +51,11 @@ from config.resource_profiles import (
 )
 
 PIPELINE_STAGES = [
-    ("DTCE", "Sprint 5"),
-    ("PEEE", "Sprint 6"),
-    ("PSME", "Sprint 7"),
-    ("SCE", "Sprint 8"),
-    ("ARAC", "Sprint 9"),
+    ("DTCE", ""),
+    ("PEEE", ""),
+    ("PSME", ""),
+    ("SCE", ""),
+    ("ARAC", ""),
 ]
 
 
