@@ -22,7 +22,16 @@ MODULE_INFO = {
         "output": "Dynamic Perceptual Threshold PTz(t) per node, with a full "
                   "auditable factor-by-factor breakdown",
         "equation": "PTz(t) = PTbase,z x Ff x Fa x UCF x Fm x Fe",
-        "patent_section": PLACEHOLDER,
+    },
+    "PEEE": {
+        "purpose": "Computes the effective Perceived Synchronization Error PEz(t) for "
+                   "every active wearable node by aggregating the technical delays "
+                   "that contribute to the user's perceived synchronization error.",
+        "input": "Clock drift, residual network delay, actuator driver delay, "
+                 "mechanical startup delay",
+        "output": "Perceived Synchronization Error PEz(t) per node, with a complete "
+                  "auditable breakdown of individual delay components.",
+        "equation": "PEz(t) = Dcd + Dnd + Dad + Dms",
     },
     "PSME": {
         "purpose": "Computes the Perceptual Synchronization Margin PSMz(t) for every "
@@ -36,7 +45,6 @@ MODULE_INFO = {
                   "Threshold Utilization, and Margin Sign (Positive / Boundary / "
                   "Negative), with a full auditable trail per node",
         "equation": "PSMz(t) = PTz(t) - PEz(t)",
-        "patent_section": PLACEHOLDER,
     },
     "SCE": {
         "purpose": "Classifies every active wearable node into one of four locked "
@@ -49,7 +57,6 @@ MODULE_INFO = {
                   "updated rolling State History, with hysteresis and dwell-time "
                   "persistence preventing rapid oscillation near a boundary",
         "equation": "State = f(NPSM, boundaries, hysteresis, dwell-time)",
-        "patent_section": PLACEHOLDER,
     },
     "ARAC": {
         "purpose": "Dynamically adapts each node's synchronization-related technical "
@@ -63,7 +70,6 @@ MODULE_INFO = {
                   "Schedule, Trigger Offset, and Transmit Power, delivered to the "
                   "node as a PRAP (Perceptual Resource Allocation Packet)",
         "equation": "Resources = f(State, BodyZone, MechanicalDelay)",
-        "patent_section": PLACEHOLDER,
     },
 }
 
@@ -123,7 +129,6 @@ if selected:
         <p style="margin:0 0 0.7rem 0;"><b>Input</b><br>{info.get('input', PLACEHOLDER)}</p>
         <p style="margin:0 0 0.7rem 0;"><b>Output</b><br>{info.get('output', PLACEHOLDER)}</p>
         <p style="margin:0 0 0.7rem 0;"><b>Equation</b><br>{info.get('equation', PLACEHOLDER)}</p>
-        <p style="margin:0;"><b>Patent Section</b><br>{info.get('patent_section', PLACEHOLDER)}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -142,6 +147,23 @@ if selected:
             <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
             <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUT</p>
             <p style="margin:0;">PTz(t) &ndash; Dynamic Perceptual Threshold</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif selected == "PEEE":
+        st.markdown(
+            """
+            <div class="psdt-card" style="text-align:center; margin-top:1rem;">
+                <p style="margin:0 0 0.5rem 0; font-weight:600;">INPUTS</p>
+                <p style="margin:0 0 0.7rem 0;">Clock Drift &nbsp;|&nbsp; Network Delay &nbsp;|&nbsp;
+                Driver Delay &nbsp;|&nbsp; Mechanical Delay</p>
+                <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+                <p style="margin:0.5rem 0; font-weight:700; color:#0B3D91;">
+                Perceived Error Estimation Engine</p>
+                <div style="font-size:1.4rem; color:#94A3B8;">&#8595;</div>
+                <p style="margin:0.5rem 0 0 0; font-weight:600;">OUTPUT</p>
+                <p style="margin:0;">PEz(t) &ndash; Perceived Synchronization Error</p>
             </div>
             """,
             unsafe_allow_html=True,
