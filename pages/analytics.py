@@ -484,7 +484,7 @@ if coordinator and coordinator.arac_audit:
         st.caption(
             "Average ARAC-allocated synchronization interval per body zone, "
             "demonstrating differentiated resource allocation across anatomical "
-            "regions (Deliverable 17)."
+            "regions."
         )
 
     st.markdown("###### Resource Parameter Timeline")
@@ -508,8 +508,8 @@ if coordinator and coordinator.arac_audit:
         st.altair_chart(tl_chart, use_container_width=True)
         st.caption(
             "Synchronization-interval evolution over time for the selected node, "
-            "showing ARAC re-allocating resources as the node's state changes "
-            "(Deliverable 18)."
+            "showing ARAC re-allocating resources as the node's state changes"
+            "."
         )
     else:
         st.markdown(
@@ -547,9 +547,9 @@ if coordinator and coordinator.arac_audit:
     st.caption(
         "Radio active time, battery consumption, and energy saving are estimated "
         "values derived from the simulation model (allocated wake-up interval and "
-        "transmit power), not direct hardware measurements (Deliverable "
-        "15). In this simulator, PRAP packets serve as both the control-packet and "
-        "resource-update mechanism (Deliverable 16)."
+        "transmit power), not direct hardware measurements. "
+        "In this simulator, PRAP packets serve as both the control-packet and "
+        "resource-update mechanism."
     )
 else:
     st.markdown(
