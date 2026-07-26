@@ -60,7 +60,7 @@ if coordinator and coordinator.dtce_audit:
     st.bar_chart(mean_pt_by_zone)
     st.caption(
         "Mean Dynamic Perceptual Threshold PTz(t) per body zone, across all active "
-        "nodes in the current digital twin. Computed by the DTCE (Sprint 5); values "
+        "nodes in the current digital twin. Computed by the DTCE; values "
         "change with frequency, actuator type, calibration, motion, and environment."
     )
 else:
@@ -101,7 +101,7 @@ if coordinator and coordinator.peee_audit:
     st.bar_chart(mean_pe_by_zone)
     st.caption(
         "Mean Estimated Perceived Error PEz(t) per body zone, across all active "
-        "nodes in the current digital twin. Computed by the PEEE (Sprint 6) from "
+        "nodes in the current digital twin. Computed by the PEEE from "
         "residual clock drift, network, actuator driver, and mechanical startup "
         "contributions."
     )
@@ -166,7 +166,7 @@ if coordinator and coordinator.peee_audit:
             "mean Estimated Perceived Error PEz(t) per body zone. This is a diagnostic "
             "preview only - PT and PE are not yet combined into a Perceptual "
             "Synchronization Margin, and no zone or node is labeled safe or critical "
-            "here. That interpretation belongs to PSME/SCE (Sprint 7+)."
+            "here. That interpretation belongs to PSME/SCE."
         )
     else:
         st.markdown(
@@ -202,7 +202,7 @@ if coordinator and coordinator.psme_audit:
     st.bar_chart(mean_psm_by_zone)
     st.caption(
         "Mean Perceptual Synchronization Margin PSMz(t) per body zone, across all "
-        "active nodes. Computed by the PSME (Sprint 7) as PSM = PT - PE; positive "
+        "active nodes. Computed by the PSME as PSM = PT - PE; positive "
         "values indicate margin remaining before the perceptual threshold is "
         "exceeded, negative values indicate the threshold has been exceeded."
     )
@@ -323,7 +323,7 @@ if coordinator and coordinator.psme_audit:
         "Utilization, Margin Sign, State, Previous State, Transition, Persistence), "
         "sortable by any column (click a column header) to surface the nodes with "
         "the smallest remaining margin first. State/Previous State/Transition/"
-        "Persistence are produced by the SCE (Sprint 8) from NPSM, with hysteresis "
+        "Persistence are produced by the SCE from NPSM, with hysteresis "
         "and dwell-time persistence preventing rapid oscillation near a boundary."
     )
 else:
@@ -484,7 +484,7 @@ if coordinator and coordinator.arac_audit:
         st.caption(
             "Average ARAC-allocated synchronization interval per body zone, "
             "demonstrating differentiated resource allocation across anatomical "
-            "regions (Sprint 9 Deliverable 17)."
+            "regions (Deliverable 17)."
         )
 
     st.markdown("###### Resource Parameter Timeline")
@@ -509,7 +509,7 @@ if coordinator and coordinator.arac_audit:
         st.caption(
             "Synchronization-interval evolution over time for the selected node, "
             "showing ARAC re-allocating resources as the node's state changes "
-            "(Sprint 9 Deliverable 18)."
+            "(Deliverable 18)."
         )
     else:
         st.markdown(
@@ -547,9 +547,9 @@ if coordinator and coordinator.arac_audit:
     st.caption(
         "Radio active time, battery consumption, and energy saving are estimated "
         "values derived from the simulation model (allocated wake-up interval and "
-        "transmit power), not direct hardware measurements (Sprint 9 Deliverable "
+        "transmit power), not direct hardware measurements (Deliverable "
         "15). In this simulator, PRAP packets serve as both the control-packet and "
-        "resource-update mechanism (Sprint 9 Deliverable 16)."
+        "resource-update mechanism (Deliverable 16)."
     )
 else:
     st.markdown(
