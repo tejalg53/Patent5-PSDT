@@ -71,7 +71,7 @@ st.caption(
 )
 
 st.divider()
-st.subheader("Final Experiment Matrix (Deliverable 10)")
+st.subheader("Final Experiment Matrix")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Expected Runs", manifest.get("expected_runs", "n/a"))
 c2.metric("Completed Runs", manifest.get("completed_runs", "n/a"))
@@ -89,24 +89,24 @@ st.subheader("Validation Status")
 
 repro_df = _load_csv(os.path.join(VAL_DIR, "reproducibility_report.csv"))
 repro_ok = _bool_col_all_true(repro_df, "match")
-status_badge("Reproducibility Audit (Deliverable 3)", repro_ok, f"({len(repro_df)} metrics/series compared across duplicate runs)")
+status_badge("Reproducibility Audit", repro_ok, f"({len(repro_df)} metrics/series compared across duplicate runs)")
 with st.expander("Reproducibility detail"):
     st.dataframe(repro_df, use_container_width=True)
 
 invariant_df = _load_csv(os.path.join(VAL_DIR, "invariant_audit.csv"))
 invariant_ok = len(invariant_df) == 0
-status_badge("Mathematical Invariant Audit (Deliverable 4)", invariant_ok, f"({len(invariant_df)} unexplained violations found)")
+status_badge("Mathematical Invariant Audit", invariant_ok, f"({len(invariant_df)} unexplained violations found)")
 with st.expander("Invariant violations (expected: empty)"):
     st.dataframe(invariant_df, use_container_width=True)
 
 fairness_df = _load_csv(os.path.join(VAL_DIR, "baseline_fairness.csv"))
 fairness_ok = _bool_col_all_true(fairness_df, "pass")
-status_badge("Baseline Fairness Audit (Deliverable 9)", fairness_ok, f"({len(fairness_df)} checks)")
+status_badge("Baseline Fairness Audit", fairness_ok, f"({len(fairness_df)} checks)")
 with st.expander("Baseline fairness detail"):
     st.dataframe(fairness_df, use_container_width=True)
 
 traceability_df = _load_csv(os.path.join(VAL_DIR, "traceability_test.csv"))
-with st.expander(f"End-to-End Traceability (Deliverable 5) -- {len(traceability_df)} node(s) traced"):
+with st.expander(f"End-to-End Traceability -- {len(traceability_df)} node(s) traced"):
     st.dataframe(traceability_df, use_container_width=True)
 
 sensitivity_df = _load_csv(os.path.join(VAL_DIR, "sensitivity_results.csv"))
@@ -115,13 +115,13 @@ if not sensitivity_df.empty and "conclusion_stable" in sensitivity_df.columns:
     variations = sensitivity_df[sensitivity_df["conclusion_stable"].isin(["Yes", "No"])]
     if not variations.empty:
         sens_ok = bool((variations["conclusion_stable"] == "Yes").all())
-status_badge("Sensitivity Analysis (Deliverables 6-7)", sens_ok,
+status_badge("Sensitivity Analysis", sens_ok,
              "(technical effect persists across all tested parameter variations)" if sens_ok else "")
 with st.expander("Sensitivity detail"):
     st.dataframe(sensitivity_df, use_container_width=True)
 
 ablation_df = _load_csv(os.path.join(VAL_DIR, "ablation_results.csv"))
-st.info("Ablation Study (Deliverable 8): A = Uniform, B = Generic-Adaptive, C = Full Patent-5 System. "
+st.info("Ablation Study: A = Uniform, B = Generic-Adaptive, C = Full Patent-5 System. "
         "Results reported as observed -- not forced into any particular ranking.")
 with st.expander("Ablation detail"):
     st.dataframe(ablation_df, use_container_width=True)
@@ -137,7 +137,7 @@ else:
     st.warning("No success-criterion file found.")
 
 st.divider()
-st.subheader("Final Results Tables (Deliverables 13-16)")
+st.subheader("Final Results Tables")
 tabs = st.tabs(["Core Results", "Scenario Results", "Body-Zone Results", "Scalability Results"])
 with tabs[0]:
     st.dataframe(_load_csv(os.path.join(AGG_DIR, "core_results.csv")), use_container_width=True)
@@ -149,7 +149,7 @@ with tabs[3]:
     st.dataframe(_load_csv(os.path.join(AGG_DIR, "scalability_results.csv")), use_container_width=True)
 
 st.divider()
-st.subheader("Final Graph Set (Deliverables 17-18)")
+st.subheader("Final Graph Set")
 fig_cols = st.columns(3)
 fig_names = ["sync_messages", "estimated_energy", "violation_rate", "body_zone_sync", "disturbance_response", "scalability"]
 for i, name in enumerate(fig_names):
@@ -159,7 +159,7 @@ for i, name in enumerate(fig_names):
 
 
 st.divider()
-st.subheader("Export Complete Evidence Package (Deliverable 20)")
+st.subheader("Export Complete Evidence Package")
 st.caption(
     "Builds PSDT_Patent5_Final_Evidence/ (README + configuration/ + raw_data/ + summaries/ + "
     "validation/ + figures/) from the artifacts already on disk, plus a matching .zip."
