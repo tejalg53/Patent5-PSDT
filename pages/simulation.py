@@ -27,13 +27,13 @@ from config.simulation_profiles import (
 
 st.title("Simulation") 
 st.markdown("---")
-st.header("Live Digital Twin (Sprint 10)")
+st.header("Live Digital Twin")
 st.markdown("### Digital Twin Control")
 st.caption(
     "A time-evolving closed-loop simulation: Node State(t) -> DTCE -> PEEE -> "
     "PSME -> SCE -> ARAC -> Resource Action -> Node State(t+dt). Simulated time "
     "is decoupled from wall-clock time, so a full run completes in well under a "
-    "second regardless of the configured duration (Sprint 10 Deliverable 2)."
+    "second regardless of the configured duration (Deliverable 2)."
 )
 
 ctrl_cols = st.columns(6)
@@ -234,7 +234,7 @@ else:
         s10_engine.clear_manual_overrides()
 
 st.markdown("---")
-st.header("Manual Engine Testing (Sprint 3-9)")
+st.header("Manual Engine Testing")
 
 
 # ---------------------------------------------------------------------
@@ -331,7 +331,7 @@ else:
             return "Not computed" if value is None else f"{value}{suffix}"
 
         sync_state_display = (
-            "Awaiting Sprint 8 classification"
+            "Awaiting classification"
             if selected_node.sync_state == "Unclassified"
             else selected_node.sync_state
         )
