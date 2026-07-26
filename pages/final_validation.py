@@ -49,7 +49,7 @@ def status_badge(label, ok, detail=""):
         st.warning(text.format("WARNING (could not be determined -- see detail below)"))
 
 
-st.title("Final Validation -- Sprint 12 Evidence Freeze")
+st.title("Final validation and evidence freeze")
 st.caption(
     "This page is the single source of truth for whether the frozen PSDT Patent 5 model, its "
     "300-run experiment matrix, and every downstream table/graph are reproducible, internally "
