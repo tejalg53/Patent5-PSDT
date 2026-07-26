@@ -42,6 +42,6 @@ with st.sidebar:
     for p in pages:
         st.page_link(p, label=f"{p.icon}  {p.title}", use_container_width=True)
     st.markdown("<hr style='margin:1.5rem 0 0.6rem 0;'>", unsafe_allow_html=True)
-    st.markdown('<div class="psdt-sidebar-version">Version 1.0</div>', unsafe_allow_html=True)
+    st.markdown('<div class="psdt-sidebar-version">PSDT v1.0 &middot; Patent Validation Platform</div>', unsafe_allow_html=True)
 
 nav.run()
