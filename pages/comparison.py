@@ -98,7 +98,7 @@ if not results:
     st.info(
         "Configure the experiment above and click **Run Controlled Experiment** to generate the "
         "comparison table and charts. No results are hard-coded here; every value comes from a "
-        "completed simulation run (Deliverable 13)."
+        "completed simulation run."
     )
 else:
     baseline_runs = results["baseline"]
@@ -175,7 +175,7 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        '<div class="psdt-section-heading">Technical Success Criterion (Deliverable 21)</div>',
+        '<div class="psdt-section-heading">Technical Success Criterion</div>',
         unsafe_allow_html=True,
     )
     if success["success"]:
@@ -193,14 +193,14 @@ else:
 
     if warnings_list:
         st.markdown(
-            '<div class="psdt-section-heading">Sanity Checks (Deliverable 26)</div>', unsafe_allow_html=True
+            '<div class="psdt-section-heading">Sanity Checks</div>', unsafe_allow_html=True
         )
         for w in warnings_list:
             st.warning(w)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        '<div class="psdt-section-heading">Trade-Off: Resource Use vs Perceptual Violations (Deliverable 14)</div>',
+        '<div class="psdt-section-heading">Trade-Off: Resource Use vs Perceptual Violations</div>',
         unsafe_allow_html=True,
     )
     trade_fig = go.Figure()
@@ -230,7 +230,7 @@ else:
         "without shifting right (more violations) relative to Baseline points."
     )
 
-    with st.expander("Statistical summary (Deliverable 20)"):
+    with st.expander("Statistical summary"):
         stat_rows = []
         for k in ["sync_messages", "radio_active_time_s", "estimated_energy_j", "violation_rate_pct", "mean_psm"]:
             for label, agg in (("Uniform Baseline", baseline_agg[k]), ("PSM-Adaptive", proposed_agg[k])):
@@ -262,7 +262,7 @@ else:
         st.dataframe(raw_table, use_container_width=True, hide_index=True)
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown('<div class="psdt-section-heading">Per-Scenario Comparison (Deliverables 7, 15-17)</div>', unsafe_allow_html=True)
+st.markdown('<div class="psdt-section-heading">Per-Scenario Comparison</div>', unsafe_allow_html=True)
 st.caption(
     "Runs the same paired Uniform vs PSM-Adaptive comparison across all three scenarios "
     "(Stable / Moderate / Challenging) using the Nodes, Seeds, and Baseline Policy configured above."
@@ -299,10 +299,10 @@ if scenario_results:
         viol_base.append(statistics.fmean([r["violation_rate_pct"] for r in b_runs]))
         viol_prop.append(statistics.fmean([r["violation_rate_pct"] for r in p_runs]))
 
-    st.markdown("**Sync Messages by Scenario (Deliverable 15)**")
+    st.markdown("**Sync Messages by Scenario**")
     st.bar_chart(pd.DataFrame({"Uniform Baseline": sync_base, "PSM-Adaptive": sync_prop}, index=scen_labels), stack=False)
 
-    st.markdown("**Estimated Energy by Scenario, with variability (Deliverable 16)**")
+    st.markdown("**Estimated Energy by Scenario, with variability**")
     energy_fig = go.Figure()
     energy_fig.add_trace(go.Bar(
         name="Uniform Baseline", x=scen_labels, y=energy_base,
@@ -319,7 +319,7 @@ if scenario_results:
     st.plotly_chart(energy_fig, use_container_width=True)
     st.caption(f"Error bars show +/- 1 population stdev across {len(seeds)} paired seed(s) per scenario.")
 
-    st.markdown("**Violation Rate by Scenario (Deliverable 17)**")
+    st.markdown("**Violation Rate by Scenario**")
     st.bar_chart(pd.DataFrame({"Uniform Baseline": viol_base, "PSM-Adaptive": viol_prop}, index=scen_labels), stack=False)
     st.caption(
         "Energy reduction alone is insufficient; violation rate should not materially worsen "
@@ -329,7 +329,7 @@ else:
     st.info("Click **Run Scenario Comparison** to generate the per-scenario charts above.")
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown('<div class="psdt-section-heading">Body-Zone Analysis (Deliverables 11, 18)</div>', unsafe_allow_html=True)
+st.markdown('<div class="psdt-section-heading">Body-Zone Analysis</div>', unsafe_allow_html=True)
 st.caption(
     "Compares mean synchronization interval by body zone for one paired run (first configured seed), "
     "using the Nodes, Scenario, and Baseline Policy configured above."
@@ -358,15 +358,15 @@ if zone_results:
     st.markdown("**Mean Sync Interval by Body Zone**")
     st.bar_chart(zone_df, stack=False)
     st.caption(
-        "Uniform Baseline should appear flat across zones (genuinely uniform, Deliverable 3). "
+        "Uniform Baseline should appear flat across zones (genuinely uniform). "
         "PSM-Adaptive should vary by zone if body-zone-specific perceptual differentiation is "
-        "actually driving resource allocation (Deliverable 11)."
+        "actually driving resource allocation."
     )
 else:
     st.info("Click **Run Body-Zone Analysis** to generate the chart above.")
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown('<div class="psdt-section-heading">Disturbance &amp; Recovery Response (Deliverables 8, 19)</div>', unsafe_allow_html=True)
+st.markdown('<div class="psdt-section-heading">Disturbance &amp; Recovery Response</div>', unsafe_allow_html=True)
 st.caption(
     "Injects an identically-timed network-jitter and clock-drift disturbance into both a Baseline "
     "and a Proposed run (first configured seed) and compares each method's PT/PE/PSM response and "
@@ -441,7 +441,7 @@ else:
     st.info("Click **Run Disturbance Experiment** to generate the response plots above.")
 
 st.markdown(
-    '<div class="psdt-section-heading">Scalability Analysis (Deliverable 10)</div>',
+    '<div class="psdt-section-heading">Scalability Analysis</div>',
     unsafe_allow_html=True,
 )
 st.caption(
@@ -511,16 +511,16 @@ else:
     st.info("Click **Run Scalability Sweep** to test whether the benefit persists as node count increases.")
 
 st.markdown(
-    '<div class="psdt-section-heading">Ablation: Baseline Policy Sensitivity (Deliverable 22)</div>',
+    '<div class="psdt-section-heading">Ablation: Baseline Policy Sensitivity</div>',
     unsafe_allow_html=True,
 )
 st.caption(
     "The primary comparison above is fixed against one uniform baseline policy chosen before "
-    "looking at results (per Deliverable 3/21). This ablation re-runs the same paired seeds against "
+    "looking at results. This ablation re-runs the same paired seeds against "
     "every available uniform baseline policy option to check whether the conclusion (PSM-Adaptive "
     "reduces resource use without materially worsening the violation rate) is sensitive to that choice, "
     "rather than an artifact of picking a conveniently weak baseline. Internal PSM-Adaptive sub-mechanisms "
-    "are not independently toggled here, since the frozen model (Deliverable 1) must not be altered."
+    "are not independently toggled here, since the frozen model must not be altered."
 )
 if st.button("Run Baseline-Policy Ablation"):
     with st.spinner("Running paired experiments against every baseline policy option..."):
@@ -569,7 +569,7 @@ else:
     st.info("Click **Run Baseline-Policy Ablation** to test sensitivity to the choice of uniform baseline policy.")
 
 st.markdown(
-    '<div class="psdt-section-heading">Raw Per-Seed Data Export (Deliverable 24)</div>',
+    '<div class="psdt-section-heading">Raw Per-Seed Data Export</div>',
     unsafe_allow_html=True,
 )
 st.caption(
@@ -599,7 +599,7 @@ else:
     st.info("Run **Run Controlled Experiment** above first to generate raw per-seed data to export.")
 
 st.markdown(
-    '<div class="psdt-section-heading">Validation Summary (Deliverable 28)</div>',
+    '<div class="psdt-section-heading">Validation Summary</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -612,7 +612,7 @@ uniform Baseline A, across node counts from 10 to 50 and across both available u
 (Uniform-Moderate and Uniform-Conservative). The perceptual-threshold violation rate for the Proposed
 method stayed at or below the Baseline's rate in most configurations tested (for example 0.02% vs 0.16%
 at 30 nodes / Scenario B / 10 seeds), consistent with the pre-registered technical success criterion
-(Deliverable 21): a measurable resource reduction without materially worsening the modeled violation rate.
+: a measurable resource reduction without materially worsening the modeled violation rate.
 
 The body-zone chart confirmed the Baseline is genuinely uniform (flat ~1000ms sync interval across all
 six zones) while the Proposed method produces real, differentiated synchronization effort by zone
@@ -629,7 +629,7 @@ method showed a slightly higher violation rate than Baseline in the per-scenario
 model's equations, thresholds, nor energy coefficients were modified in response to these results; the one
 genuine bug found during development (uniform baseline mode not being respected in the simulation engine)
 was documented, fixed, and the model version was carried forward as PSDT v1.0-sim before any results were
-examined, per Deliverable 1.
+examined.
 """
 )
 st.caption(
