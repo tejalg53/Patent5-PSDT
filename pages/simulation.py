@@ -23,6 +23,7 @@ from config.simulation_profiles import (
     DEFAULT_NETWORK_PROFILE,
     SCENARIO_OPTIONS,
     DEFAULT_SCENARIO,
+    INTERACTIVE_EVENT_LOG_MAX_STEPS,
 )
 
 st.title("Simulation") 
@@ -211,9 +212,43 @@ else:
 
     st.markdown("---")
     st.markdown("### Event Log")
-    with st.expander("Recent simulation events", expanded=False):
-        for s10_event in s10_engine.history.recent_events(150):
+    s10_is_experiment = s10_history_mode.startswith("Experiment")
+    if s10_is_experiment:
+        st.caption(
+            "Experiment Mode: full event log retained (complete history for Section 8 export/analysis)."
+        )
+        s10_event_limit = len(s10_engine.history.event_log)
+    else:
+        st.caption(
+            f"Interactive Mode: event log bounded to the most recent {INTERACTIVE_EVENT_LOG_MAX_STEPS} "
+            "events (sliding window)."
+        )
+        s10_event_limit = INTERACTIVE_EVENT_LOG_MAX_STEPS
+    with st.expander("Full simulation events" if s10_is_experiment else "Recent simulation events", expanded=False):
+        for s10_event in s10_engine.history.recent_events(max(s10_event_limit, 1)):
             st.text(f"T={s10_event['timestamp']:.1f}s  {s10_event['node_id']}  {s10_event['message']}")
+
+    if s10_is_experiment:
+        s10_export_rows = []
+        for s10_nid, s10_series in s10_engine.history.node_series.items():
+            s10_n_steps = len(s10_series.get("timestamp", []))
+            for s10_i in range(s10_n_steps):
+                s10_row = {"node_id": s10_nid}
+                for s10_field, s10_values in s10_series.items():
+                    s10_row[s10_field] = s10_values[s10_i]
+                s10_export_rows.append(s10_row)
+        s10_export_df = pd.DataFrame(s10_export_rows)
+        st.caption(
+            f"Full history export: {len(s10_export_df)} node-step rows across {s10_status['cycle']} cycles "
+            "(Experiment Mode - complete run, suitable for Section 8 analysis)."
+        )
+        st.download_button(
+            "Download Full Simulation History (CSV)",
+            data=s10_export_df.to_csv(index=False).encode("utf-8"),
+            file_name="psdt_experiment_full_history.csv",
+            mime="text/csv",
+            key="s10_export_full_history",
+        )
 
     st.markdown("---")
     st.markdown("### Disturbance Injection")

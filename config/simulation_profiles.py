@@ -57,8 +57,15 @@ SCENARIOS = {
 SCENARIO_OPTIONS = list(SCENARIOS.keys())
 DEFAULT_SCENARIO = "Scenario B: Moderate"
 
-INTERACTIVE_HISTORY_MAX_STEPS = 300
+INTERACTIVE_HISTORY_MAX_STEPS = 100
 EXPERIMENT_HISTORY_MAX_STEPS = None
+
+# Sprint 13: Interactive vs Experiment Mode event-log retention (mirrors the
+# sample retention split above). Interactive Mode keeps only the most recent
+# events so memory stays flat during long/live interactive runs; Experiment
+# Mode keeps the complete event log for full reproducibility/export.
+INTERACTIVE_EVENT_LOG_MAX_STEPS = 100
+EXPERIMENT_EVENT_LOG_MAX_STEPS = None
 
 DISTURBANCE_NETWORK_JITTER_SPIKE_MS = 15.0
 DISTURBANCE_CLOCK_DRIFT_SPIKE_MS = 8.0

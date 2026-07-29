@@ -68,7 +68,7 @@ class SimulationHistory:
 
     def log_event(self, timestamp: float, node_id: str, message: str) -> None:
         self.event_log.append({"timestamp": timestamp, "node_id": node_id, "message": message})
-        if len(self.event_log) > self.max_event_log:
+        if self.max_event_log and len(self.event_log) > self.max_event_log:
             self.event_log = self.event_log[-self.max_event_log:]
 
     def recent_events(self, limit: int = 200) -> List[dict]:

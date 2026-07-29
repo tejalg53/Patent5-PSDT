@@ -94,6 +94,11 @@ def compute_run_metrics(engine) -> dict:
         "scenario": engine.scenario_name,
         "duration_s": engine.duration_s,
         "sync_messages": status["sync_events"],
+        "communication_messages": (
+            engine.coordinator.get_packet_counts()["generated"]
+            + engine.coordinator.prap_generated
+            + status["sync_events"]
+        ),
         "radio_active_time_s": total_radio_active_time,
         "radio_active_time_mean_per_node_s": (
             total_radio_active_time / len(registry) if registry else 0.0
@@ -141,6 +146,12 @@ def compare_runs(baseline: dict, proposed: dict) -> dict:
             "baseline": baseline["sync_messages"], "proposed": proposed["sync_messages"],
             "reduction_pct": _reduction_pct(baseline["sync_messages"], proposed["sync_messages"]),
         },
+        "communication_messages": {
+            "baseline": baseline.get("communication_messages"), "proposed": proposed.get("communication_messages"),
+            "reduction_pct": _reduction_pct(
+                baseline.get("communication_messages"), proposed.get("communication_messages")
+            ),
+        },
         "radio_active_time_s": {
             "baseline": baseline["radio_active_time_s"], "proposed": proposed["radio_active_time_s"],
             "reduction_pct": _reduction_pct(
@@ -157,11 +168,27 @@ def compare_runs(baseline: dict, proposed: dict) -> dict:
             "baseline": baseline["violation_rate_pct"], "proposed": proposed["violation_rate_pct"],
             "difference_pp": proposed["violation_rate_pct"] - baseline["violation_rate_pct"],
         },
+        "violation_events": {
+            "baseline": baseline.get("violation_events"), "proposed": proposed.get("violation_events"),
+            "difference": (
+                proposed["violation_events"] - baseline["violation_events"]
+                if baseline.get("violation_events") is not None and proposed.get("violation_events") is not None
+                else None
+            ),
+        },
         "mean_psm": {
             "baseline": baseline["mean_psm"], "proposed": proposed["mean_psm"],
             "difference": (
                 proposed["mean_psm"] - baseline["mean_psm"]
                 if baseline["mean_psm"] is not None and proposed["mean_psm"] is not None
+                else None
+            ),
+        },
+        "mean_pe": {
+            "baseline": baseline.get("mean_pe"), "proposed": proposed.get("mean_pe"),
+            "difference": (
+                proposed["mean_pe"] - baseline["mean_pe"]
+                if baseline.get("mean_pe") is not None and proposed.get("mean_pe") is not None
                 else None
             ),
         },

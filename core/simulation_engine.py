@@ -80,6 +80,7 @@ from config.simulation_profiles import (
     RESYNC_RESIDUAL_MIN_MS,
     RESYNC_RESIDUAL_MAX_MS,
     INTERACTIVE_HISTORY_MAX_STEPS,
+    INTERACTIVE_EVENT_LOG_MAX_STEPS,
     DISTURBANCE_NETWORK_JITTER_SPIKE_MS,
     DISTURBANCE_CLOCK_DRIFT_SPIKE_MS,
     DISTURBANCE_ENVIRONMENT_STATE,
@@ -163,7 +164,8 @@ class DigitalTwinSimulationEngine:
         self.coordinator.register_nodes(nodes)
 
         max_steps = None if self.history_mode == "experiment" else INTERACTIVE_HISTORY_MAX_STEPS
-        self.history = SimulationHistory(max_steps=max_steps)
+        max_event_log = None if self.history_mode == "experiment" else INTERACTIVE_EVENT_LOG_MAX_STEPS
+        self.history = SimulationHistory(max_steps=max_steps, max_event_log=max_event_log)
 
         self._node_rngs = {n.node_id: random.Random(f"{self.seed}:{n.node_id}:sim10") for n in nodes}
         self._time_since_sync_ms = {n.node_id: 0.0 for n in nodes}
