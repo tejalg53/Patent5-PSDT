@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lean Canvas - Perceptual Synchronization Patent</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #fff;
+    margin: 0;
+    padding: 30px;
+    color: #1a1a1a;
+  }
+  .header {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #444;
+    margin-bottom: 18px;
+    max-width: 1400px;
+    line-height: 1.4;
+  }
+  .canvas {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr 1.3fr 1.1fr 1.1fr;
+    grid-template-rows: auto auto auto;
+    border: 1px solid #222;
+    max-width: 1500px;
+  }
+  .cell {
+    border-right: 1px solid #222;
+    border-bottom: 1px solid #222;
+    padding: 10px 12px;
+    min-height: 180px;
+  }
+  .cell:last-child { border-right: none; }
+  .row3 .cell { border-bottom: none; }
+  .num {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a73e8;
+    float: right;
+    margin-top: -4px;
+  }
+  .title {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  ul {
+    margin: 6px 0 0 0;
+    padding-left: 16px;
+    font-size: 10.8px;
+    line-height: 1.35;
+  }
+  li { margin-bottom: 3px; }
+  .subhead {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 10px;
+    color: #333;
+  }
+  .quote {
+    font-style: italic;
+    font-size: 11px;
+    color: #1a1a1a;
+    border-left: 3px solid #1a73e8;
+    padding-left: 8px;
+    margin: 6px 0;
+  }
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 1500px;
+    border: 1px solid #222;
+    border-top: none;
+  }
+  .bottom-cell {
+    padding: 10px 12px;
+    min-height: 130px;
+    border-right: 1px solid #222;
+  }
+  .bottom-cell:last-child { border-right: none; }
+  .patent-title {
+    max-width: 1500px;
+    margin-top: 22px;
+    padding: 10px 14px;
+    border: 1px solid #222;
+    font-size: 11.5px;
+    background: #f7f9fc;
+  }
+  .patent-title b { color: #1a73e8; }
+</style>
+</head>
+<body>
+
+<div class="header">LEAN CANVAS</div>
+<div class="subtitle">A Perceptual Synchronization Method for Adaptive Resource Allocation in Distributed Wearable Haptic Systems Using Dynamic Human Perception Thresholds</div>
+
+<div class="canvas">
+  <!-- Row 1 -->
+  <div class="cell">
+    <span class="num">2</span>
+    <div class="title">Problem</div>
+    <ul>
+      <li>Uniform synchronization of all wearable nodes regardless of body sensitivity</li>
+      <li>Excessive communication & energy consumption from unnecessary synchronization updates</li>
+      <li>Reduced perceptual quality when network delay or clock drift varies across nodes</li>
+    </ul>
+  </div>
+  <div class="cell">
+    <span class="num">4</span>
+    <div class="title">Solution</div>
+    <ul>
+      <li>Dynamically determine body-zone-specific perceptual synchronization thresholds</li>
+      <li>Estimate perceived synchronization error from multiple delay components</li>
+      <li>Compute Perceptual Synchronization Margin (PSM)</li>
+      <li>Classify urgency into four operational states</li>
+      <li>Adaptively allocate synchronization resources only where required</li>
+    </ul>
+  </div>
+  <div class="cell">
+    <span class="num">5</span>
+    <div class="title">Unique Value Proposition</div>
+    <div class="quote">"Synchronize only where human perception demands it - not everywhere equally."</div>
+    <ul>
+      <li>Allocates synchronization resources based on perceptual sensitivity</li>
+      <li>Improves efficiency while reducing communication overhead & energy use</li>
+      <li>No compromise to perceived haptic quality</li>
+    </ul>
+    <div class="subhead">High-Level Concept</div>
+    <ul>
+      <li>Adaptive perception-aware synchronization controller for distributed wearable haptic networks</li>
+    </ul>
+  </div>
+  <div class="cell">
+    <span class="num">9</span>
+    <div class="title">Unfair Advantage</div>
+    <ul>
+      <li>Novel body-zone-specific perceptual synchronization strategy</li>
+      <li>Dynamic Perceptual Synchronization Margin (PSM) framework</li>
+      <li>Multi-state adaptive synchronization controller</li>
+      <li>Closed-loop adaptive resource allocation</li>
+      <li>Strong IP backed by complete Digital Twin (PSDT) validation platform</li>
+      <li>Cross-domain applicability (XR, healthcare, industrial, defence, teleoperation) without core method changes</li>
+    </ul>
+  </div>
+  <div class="cell">
+    <span class="num">1</span>
+    <div class="title">Customer Segments</div>
+    <div class="subhead">Primary</div>
+    <ul>
+      <li>Wearable device manufacturers</li>
+      <li>XR/VR hardware companies</li>
+      <li>Medical rehabilitation device manufacturers</li>
+      <li>Defence & industrial wearable system developers</li>
+    </ul>
+    <div class="subhead">Secondary</div>
+    <ul>
+      <li>Haptic glove manufacturers</li>
+      <li>Academic research labs</li>
+      <li>Robotics & teleoperation companies</li>
+    </ul>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="cell">
+    <div class="title">Existing Alternatives</div>
+    <ul>
+      <li>Fixed synchronization intervals</li>
+      <li>Global clock synchronization methods</li>
+      <li>IEEE 1588 / PTP-based synchronization</li>
+      <li>Static resource allocation</li>
+      <li>Conventional distributed haptic control</li>
+    </ul>
+  </div>
+  <div class="cell">
+  <span class="num">7</span>
+  <div class="title">Key Metrics</div>
+  <ul>
+    <li>User satisfaction with haptic synchronization quality</li>
+    <li>Battery life improvement of wearable devices</li>
+    <li>Reduction in communication overhead</li>
+    <li>Synchronization reliability across wearable nodes</li>
+    <li>Customer retention & repeat product usage</li>
+    <li>OEM licensing & industry adoption</li>
+    <li>Market adoption across XR, healthcare & industrial wearables</li>
+  </ul>
+</div>
+  <div class="cell"></div>
+  <div class="cell">
+    <span class="num">6</span>
+    <div class="title">Channels</div>
+    <ul>
+      <li>Direct licensing to wearable OEMs</li>
+      <li>Research collaborations with universities</li>
+      <li>Technology transfer offices</li>
+      <li>Embedded firmware partnerships</li>
+      <li>Patent licensing</li>
+      <li>Academic conferences & journals</li>
+    </ul>
+  </div>
+  <div class="cell">
+    <div class="title">Early Adopters</div>
+    <ul>
+      <li>Companies developing multi-actuator wearable devices</li>
+      <li>Research institutes working on haptic feedback systems</li>
+      <li>Smart wearable startups</li>
+    </ul>
+  </div>
+</div>
+
+<div class="bottom-row">
+  <div class="bottom-cell">
+    <span class="num">8</span>
+    <div class="title">Cost Structure</div>
+    <div class="subhead">Development Costs</div>
+    <ul>
+      <li>Firmware development</li>
+      <li>Digital twin software development</li>
+      <li>Prototype validation</li>
+      <li>Testing and verification</li>
+    </ul>
+    <div class="subhead">Deployment Costs</div>
+    <ul>
+      <li>Wearable hardware, wireless communication modules, haptic actuators, embedded processors</li>
+      <li>Patent filing and maintenance</li>
+    </ul>
+  </div>
+  <div class="bottom-cell">
+    <span class="num">3</span>
+    <div class="title">Revenue Streams</div>
+    <ul>
+      <li>Patent licensing to wearable technology companies</li>
+      <li>Integration into commercial XR/VR platforms</li>
+      <li>Embedded firmware licensing for wearable manufacturers</li>
+      <li>Research collaborations & industrial partnerships</li>
+      <li>Technology transfer for medical & rehabilitation devices</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>
