@@ -117,3 +117,23 @@ ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL = {
 # radio wakes up to check for traffic. Used with the wake-up interval to
 # estimate radio_active_time per simulation cycle (Sprint 9 Deliverable 15).
 RADIO_WAKE_DURATION_S = 0.004
+
+
+# Sprint 14 (Patent strengthening, Change 3 - resource-reduction vs
+# perceptual-violation trade-off curve): a multiplicative scale applied
+# ONLY to the RELAXED and NOMINAL state resource profiles above (never to
+# ELEVATED/IMMEDIATE, which stay fully protected regardless of adaptation
+# level). "Mild" == 1.0 reproduces the exact frozen Sprint 9/10/11
+# SYNC/BEACON/RADIO_WAKEUP intervals for RELAXED/NOMINAL unchanged, so the
+# default "adaptive" control_mode's behavior is byte-identical to before
+# this change. "Moderate" and "Aggressive" stretch those two comfortable-
+# margin states' intervals further, trading more resource savings for a
+# smaller remaining perceptual margin, so the trade-off curve has more than
+# one point to plot.
+ADAPTATION_LEVEL_SCALE = {
+    "Mild": 1.0,
+    "Moderate": 1.6,
+    "Aggressive": 2.6,
+}
+ADAPTATION_LEVEL_OPTIONS = list(ADAPTATION_LEVEL_SCALE.keys())
+DEFAULT_ADAPTATION_LEVEL = "Mild"
