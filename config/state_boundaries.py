@@ -41,3 +41,13 @@ STATE_PERSISTENCE_CYCLES = 3
 # Maximum number of recent (step, timestamp, state) samples retained in
 # each node's rolling state_history buffer (Sprint 8 Deliverable 8).
 STATE_HISTORY_LENGTH = 50
+
+
+# Sprint 14 (Patent strengthening, Change 4 ablation Method B "Error-only
+# adaptive synchronization"): a single fixed, non-personalized reference
+# value (ms) used in place of each node's own Dynamic Perceptual Threshold
+# PTz(t) when classification is driven by raw Perceived Error alone. Set to
+# the mean of core/threshold_profiles.py's BASE_THRESHOLDS_MS across all six
+# body zones ((55+60+65+70+65+50)/6), so Method B represents "one generic
+# system-wide error tolerance" rather than an arbitrarily picked number.
+PE_ONLY_REFERENCE_MS = 60.83
