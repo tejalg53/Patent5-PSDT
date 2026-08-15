@@ -4,7 +4,7 @@ Sprint 8 - Synchronization Classification Engine (SCE).
 Classifies each node's current Normalized Perceptual Synchronization
 Margin (NPSM) into one of four locked synchronization states:
 
-    RELAXED, NOMINAL, ELEVATED, IMMEDIATE
+RELAXED, NOMINAL, ELEVATED, IMMEDIATE
 
 The SCE is a finite-state control machine, not a calculator: it never
 recomputes PT, PE, or PSM, and it never adjusts any synchronization
@@ -14,17 +14,26 @@ engine's.
 
 Stability against small fluctuations is enforced two ways:
 
-    - Hysteresis: each boundary gets a small "sticky" band so a value
-      that has only barely crossed a threshold does not immediately
-      flip the state unless it clears the boundary by more than
-      HYSTERESIS_MARGIN, in the direction away from the node's
-      currently committed state.
-    - Persistence (dwell-time): a post-hysteresis candidate state must
-      be observed for STATE_PERSISTENCE_CYCLES consecutive evaluations
-      before the node's committed state actually changes.
+- Hysteresis: each boundary gets a small "sticky" band so a value
+  that has only barely crossed a threshold does not immediately
+  flip the state unless it clears the boundary by more than
+  HYSTERESIS_MARGIN, in the direction away from the node's
+  currently committed state.
+- Persistence (dwell-time): a post-hysteresis candidate state must
+  be observed for STATE_PERSISTENCE_CYCLES consecutive evaluations
+  before the node's committed state actually changes.
 
 All boundary/hysteresis/persistence numbers are sourced from
 config/state_boundaries.py - never hardcoded here.
+
+Sprint 14 (Patent strengthening, Change 5): the engine now accepts
+optional per-instance overrides for hysteresis_margin and
+persistence_cycles. This lets the experiment layer run a controlled
+"hysteresis ablation" (Change 5) - e.g. hysteresis_margin=0.0 and
+persistence_cycles=1 reproduces immediate, un-damped state switching
+for comparison against the default, hysteresis-protected behavior.
+When no overrides are supplied the engine behaves byte-identically to
+the original Sprint 8 implementation.
 """
 
 from dataclasses import dataclass
@@ -79,7 +88,28 @@ class SynchronizationClassificationEngine:
 
     This engine performs no adaptive control. It only decides which of
     the four locked states a node currently belongs to.
+
+    Parameters
+    ----------
+    hysteresis_margin : Optional[float]
+        Sprint 14 (Change 5) override. When None (default), the value
+        is read from config/state_boundaries.HYSTERESIS_MARGIN, which
+        reproduces the original Sprint 8 behavior exactly. Pass 0.0 to
+        disable hysteresis entirely for an ablation run.
+    persistence_cycles : Optional[int]
+        Sprint 14 (Change 5) override. When None (default), the value
+        is read from config/state_boundaries.STATE_PERSISTENCE_CYCLES.
+        Pass 1 to disable dwell-time persistence for an ablation run
+        (a single observation is enough to commit a transition).
     """
+
+    def __init__(self, hysteresis_margin=None, persistence_cycles=None):
+        self.hysteresis_margin = (
+            HYSTERESIS_MARGIN if hysteresis_margin is None else hysteresis_margin
+        )
+        self.persistence_cycles = (
+            STATE_PERSISTENCE_CYCLES if persistence_cycles is None else persistence_cycles
+        )
 
     def _raw_state_for(self, npsm):
         """Plain boundary classification with no hysteresis applied.
@@ -113,11 +143,11 @@ class SynchronizationClassificationEngine:
             if prev_rank > lower_rank:
                 # Previously on the upper side of this boundary - make it
                 # harder to cross back down.
-                effective.append(boundary - HYSTERESIS_MARGIN)
+                effective.append(boundary - self.hysteresis_margin)
             else:
                 # Previously on the lower side (or exactly at it) - make
                 # it harder to cross up.
-                effective.append(boundary + HYSTERESIS_MARGIN)
+                effective.append(boundary + self.hysteresis_margin)
 
         eff_elevated_min, eff_nominal_min, eff_relaxed_min = effective
         if npsm >= eff_relaxed_min:
@@ -202,7 +232,7 @@ class SynchronizationClassificationEngine:
         else:
             new_count = 1
 
-        if new_count >= STATE_PERSISTENCE_CYCLES:
+        if new_count >= self.persistence_cycles:
             # Candidate has persisted long enough - commit the transition.
             return SCEResult(
                 current_state=candidate,
