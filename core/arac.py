@@ -22,6 +22,15 @@ synchronization quality is protected when it matters most. States with a
 comfortable margin (RELAXED, NOMINAL) receive longer intervals and lower
 power, reducing communication overhead and energy consumption when the
 node does not need tight synchronization.
+
+Sprint 14 (Patent strengthening, Change 3): the controller now accepts an
+optional adaptation_level ("Mild"/"Moderate"/"Aggressive", see
+config/resource_profiles.ADAPTATION_LEVEL_SCALE) that further stretches
+the RELAXED/NOMINAL sync/beacon/wake-up intervals. This is what lets the
+experiment layer trace a resource-reduction-vs-perceptual-violation
+trade-off curve. ELEVATED/IMMEDIATE intervals and transmit power at every
+state are never scaled. adaptation_level="Mild" (scale 1.0) reproduces
+the original Sprint 9 behavior exactly.
 """
 
 from dataclasses import dataclass
@@ -42,8 +51,10 @@ from config.resource_profiles import (
     DEFAULT_TRIGGER_OFFSET_MS,
     ZONE_SYNC_SCALE,
     DEFAULT_ZONE_SYNC_SCALE,
+    ADAPTATION_LEVEL_SCALE,
+    DEFAULT_ADAPTATION_LEVEL,
 )
-from core.sce import STATE_ORDER
+from core.sce import STATE_ORDER, RELAXED, NOMINAL
 
 
 @dataclass(frozen=True)
@@ -84,21 +95,52 @@ def _default_resources():
 class AdaptiveResourceAllocationController:
     """Allocates synchronization-related technical resources per node,
     driven by the node's current SCE-classified synchronization state.
+
+    Parameters
+    ----------
+    adaptation_level : Optional[str]
+        Sprint 14 (Change 3) override. One of
+        config.resource_profiles.ADAPTATION_LEVEL_OPTIONS. When None
+        (default), config.resource_profiles.DEFAULT_ADAPTATION_LEVEL
+        ("Mild") is used, which reproduces the original Sprint 9
+        RELAXED/NOMINAL resource intervals unchanged.
     """
+
+    def __init__(self, adaptation_level=None):
+        self.adaptation_level = (
+            DEFAULT_ADAPTATION_LEVEL if adaptation_level is None else adaptation_level
+        )
+        self.adaptation_scale = ADAPTATION_LEVEL_SCALE.get(self.adaptation_level, 1.0)
 
     def _resource_for_state(self, state, zone_scale):
         """Deterministic base resource profile for `state`, with the
         synchronization interval scaled by the node's body-zone factor
         (Sprint 9 Deliverables 3-4-5-7 and 14/17). Raises ValueError for
         an unrecognized state - callers needing fail-safe behavior should
-        use safe_allocate() instead of calling this directly."""
+        use safe_allocate() instead of calling this directly.
+
+        Sprint 14 (Patent strengthening, Change 3): for the two states
+        with a comfortable perceptual margin (RELAXED, NOMINAL) the
+        sync/beacon/wake-up intervals are further scaled by
+        self.adaptation_scale. ELEVATED/IMMEDIATE intervals and transmit
+        power at every state are never scaled, so synchronization quality
+        is never traded away when margin is already tight.
+        """
         if state not in STATE_ORDER:
             raise ValueError(f"Unrecognized synchronization state: {state!r}")
 
+        level_scale = self.adaptation_scale if state in (RELAXED, NOMINAL) else 1.0
+
         return {
-            "sync_interval_ms": round(SYNC_INTERVAL_MS_BY_STATE[state] * zone_scale, 2),
-            "beacon_interval_ms": BEACON_INTERVAL_MS_BY_STATE[state],
-            "radio_wakeup_interval_ms": RADIO_WAKEUP_INTERVAL_MS_BY_STATE[state],
+            "sync_interval_ms": round(
+                SYNC_INTERVAL_MS_BY_STATE[state] * zone_scale * level_scale, 2
+            ),
+            "beacon_interval_ms": round(
+                BEACON_INTERVAL_MS_BY_STATE[state] * level_scale, 2
+            ),
+            "radio_wakeup_interval_ms": round(
+                RADIO_WAKEUP_INTERVAL_MS_BY_STATE[state] * level_scale, 2
+            ),
             "transmit_power_level": TRANSMIT_POWER_LEVEL_BY_STATE[state],
             "transmit_power_pct": TRANSMIT_POWER_PCT_BY_STATE[state],
         }
