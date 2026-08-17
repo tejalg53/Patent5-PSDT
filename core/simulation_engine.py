@@ -27,6 +27,29 @@ only core/experiment_engine.py's control_mode selection determines which
 resource-control path this engine takes. The default control_mode,
 "adaptive", is exactly Sprint 10's original behavior and is unchanged.
 
+Sprint 14 (Patent strengthening, Change 4) adds two further control_mode
+values used to run the four-way controlled ablation study:
+
+- "pe_only_adaptive" (Method B, "error-only adaptive"): the Coordinator
+  is constructed with pe_only_control=True, so SCE classifies every node
+  from its raw Estimated Perceived Error alone (normalized against
+  PE_ONLY_REFERENCE_MS), never consulting the personalized Dynamic
+  Perceptual Threshold. Hysteresis stays enabled (stateful).
+- "pt_only_adaptive" (Method C, "perceptual-threshold-only / non-stateful
+  adaptive"): the Coordinator is constructed with hysteresis_enabled=False
+  (hysteresis_margin=0.0, persistence_cycles=1), so the normal PT/PE-
+  derived NPSM classification is used but reacts immediately every cycle
+  with no dwell-time persistence and no boundary margin.
+
+Combined with "uniform" (Method A) and "adaptive" (Method D, the full,
+unmodified PSM-Adaptive control loop), these four control_mode values are
+exactly Methods A/B/C/D of the Change 4 ablation study. An optional
+adaptation_level parameter (Change 3) is forwarded to the Coordinator's
+ARAC instance for all non-"uniform" modes to scale RELAXED/NOMINAL
+resource intervals for the resource-reduction-vs-violation-rate trade-off
+curve. Both additions default to values that reproduce the exact frozen
+Sprint 10/11/12 behavior unchanged.
+
 One simulation cycle (fixed, documented order):
 
 1. Update environmental/network conditions (scenario timeline)
@@ -111,12 +134,14 @@ class DigitalTwinSimulationEngine:
                  network_profile=DEFAULT_NETWORK_PROFILE,
                  scenario=DEFAULT_SCENARIO, history_mode="interactive",
                  control_mode="adaptive",
-                 baseline_policy=DEFAULT_UNIFORM_POLICY):
+                 baseline_policy=DEFAULT_UNIFORM_POLICY,
+                 adaptation_level=None):
         if scenario not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario!r}")
         if network_profile not in NETWORK_PROFILES:
             raise ValueError(f"Unknown network profile: {network_profile!r}")
-        if control_mode not in ("adaptive", "uniform", "generic_adaptive"):
+        if control_mode not in ("adaptive", "uniform", "generic_adaptive",
+                                 "pe_only_adaptive", "pt_only_adaptive"):
             raise ValueError(f"Unknown control_mode: {control_mode!r}")
         if control_mode == "uniform" and baseline_policy not in UNIFORM_POLICIES:
             raise ValueError(f"Unknown baseline_policy: {baseline_policy!r}")
@@ -131,6 +156,8 @@ class DigitalTwinSimulationEngine:
 
         self.control_mode = control_mode
         self.baseline_policy = baseline_policy
+        # Sprint 14 Change 3: forwarded to the Coordinator's ARAC instance.
+        self.adaptation_level = adaptation_level
 
         self.model_version = None
         self.experiment_id = None
@@ -157,8 +184,16 @@ class DigitalTwinSimulationEngine:
         self.finished = False
 
     def initialize(self):
+        # Sprint 14 Change 4: control_mode selects which ablation arm the
+        # Coordinator runs as. "pe_only_adaptive" (Method B) and
+        # "pt_only_adaptive" (Method C) are new; "generic_adaptive",
+        # "adaptive" (Method D) and "uniform" (Method A) are unchanged.
         self.coordinator = CentralSynchronizationCoordinator(
-            seed=self.seed, generic_control=(self.control_mode == "generic_adaptive"),
+            seed=self.seed,
+            generic_control=(self.control_mode == "generic_adaptive"),
+            hysteresis_enabled=(self.control_mode != "pt_only_adaptive"),
+            pe_only_control=(self.control_mode == "pe_only_adaptive"),
+            adaptation_level=self.adaptation_level,
         )
         nodes = generate_nodes(self.num_nodes, self.seed)
         self.coordinator.register_nodes(nodes)
