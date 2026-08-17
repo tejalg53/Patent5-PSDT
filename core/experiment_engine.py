@@ -8,6 +8,27 @@ holding every other configuration input identical (Deliverable 4: paired
 design). This module does not duplicate the simulator or any DTCE/PEEE/
 PSME/SCE/ARAC mathematics; it only orchestrates core/simulation_engine.py
 with two different control_mode settings.
+
+Sprint 14 (Patent strengthening, Changes 3-5) adds:
+
+- ControlledExperiment.run_pe_only() / run_pt_only(): run the two new
+  ablation arms (Method B "PE-only adaptive", Method C "PT-only /
+  non-stateful adaptive") added to core/simulation_engine.py.
+- run_ablation_study(): Change 4, the four-way controlled ablation
+  study (Method A "Uniform", Method B "PE-only adaptive", Method C
+  "PT-only / non-stateful adaptive", Method D "Full PSM-Adaptive").
+- run_adaptation_sweep(): Change 3, runs the full PSM-Adaptive method
+  at each adaptation_level (Mild/Moderate/Aggressive) to trace the
+  resource-reduction-vs-perceptual-violation-rate trade-off curve.
+- run_hysteresis_ablation(): Change 5, compares the full PSM-Adaptive
+  method with hysteresis (Method D) against the same method without
+  hysteresis (Method C, "PT-only / non-stateful") to quantify the
+  effect of hysteresis/persistence on state transitions, resource
+  reallocations, synchronization messages, energy, and perceptual
+  violation rate.
+
+None of these additions alter the frozen 'uniform' or 'adaptive' code
+paths; every new entry point is purely additive.
 """
 
 from dataclasses import dataclass
@@ -32,6 +53,8 @@ from config.simulation_profiles import (
     DEFAULT_SCENARIO,
     SCENARIO_OPTIONS,
 )
+from config.resource_profiles import ADAPTATION_LEVEL_OPTIONS, DEFAULT_ADAPTATION_LEVEL
+
 
 _SCENARIO_CODE = {
     "Scenario A: Stable": "STA",
@@ -59,6 +82,10 @@ class ControlledExperiment:
     network_profile: Optional[str] = None
     baseline_policy: str = DEFAULT_UNIFORM_POLICY
     history_mode: str = "experiment"
+    # Sprint 14 Change 3: forwarded to the Coordinator's ARAC instance
+    # for every non-"uniform" control_mode. None reproduces the exact
+    # frozen Sprint 9 behavior ("Mild" / scale 1.0).
+    adaptation_level: Optional[str] = None
 
     def _make_engine(self, control_mode: str) -> DigitalTwinSimulationEngine:
         engine = DigitalTwinSimulationEngine(
@@ -71,6 +98,7 @@ class ControlledExperiment:
             history_mode=self.history_mode,
             control_mode=control_mode,
             baseline_policy=self.baseline_policy,
+            adaptation_level=self.adaptation_level,
         )
         engine.model_version = MODEL_VERSION
         engine.experiment_id = generate_experiment_id(self.scenario, self.nodes, self.seed, control_mode)
@@ -95,6 +123,28 @@ class ControlledExperiment:
         (generic_control=True) for the exact mechanism. Does not alter the
         frozen 'uniform' or 'adaptive' (full Patent 5 / Method C) code paths."""
         engine = self._make_engine("generic_adaptive")
+        engine.initialize()
+        engine.run_to_completion()
+        return engine
+
+    def run_pe_only(self) -> DigitalTwinSimulationEngine:
+        """Sprint 14 Change 4 (ablation Method B, "error-only adaptive"):
+        adaptive resource control driven only by each node's raw
+        Estimated Perceived Error, ignoring the personalized Dynamic
+        Perceptual Threshold entirely. See CentralSynchronizationCoordinator
+        (pe_only_control=True) for the exact mechanism."""
+        engine = self._make_engine("pe_only_adaptive")
+        engine.initialize()
+        engine.run_to_completion()
+        return engine
+
+    def run_pt_only(self) -> DigitalTwinSimulationEngine:
+        """Sprint 14 Change 4 (ablation Method C, "perceptual-threshold-
+        only / non-stateful adaptive"): the normal PT/PE-derived NPSM
+        classification with hysteresis and dwell-time persistence
+        disabled (reacts immediately every cycle). See
+        CentralSynchronizationCoordinator (hysteresis_enabled=False)."""
+        engine = self._make_engine("pt_only_adaptive")
         engine.initialize()
         engine.run_to_completion()
         return engine
@@ -227,3 +277,76 @@ def run_disturbance_experiment(seed: int, nodes: int, duration: float, time_step
         "baseline_recovery_s": _recovery_time(baseline_engine, node_id),
         "proposed_recovery_s": _recovery_time(proposed_engine, node_id),
     }
+
+
+def run_ablation_study(nodes: int, duration: float, time_step: float, scenario: str,
+                        seeds: List[int], baseline_policy: str = DEFAULT_UNIFORM_POLICY,
+                        progress_callback=None) -> dict:
+    """Sprint 14 Change 4: runs the four-way controlled ablation study
+    (Method A "Uniform", Method B "PE-only adaptive", Method C "PT-only
+    / non-stateful adaptive", Method D "Full PSM-Adaptive") across
+    multiple seeds for one (scenario, node-count) configuration, holding
+    every other input identical apart from control_mode. Returns raw
+    per-seed metrics for all four methods."""
+    results = {"uniform": [], "pe_only": [], "pt_only": [], "adaptive": []}
+    for i, seed in enumerate(seeds):
+        exp = ControlledExperiment(
+            seed=seed, nodes=nodes, duration=duration, time_step=time_step,
+            scenario=scenario, baseline_policy=baseline_policy,
+        )
+        results["uniform"].append(compute_run_metrics(exp.run_uniform()))
+        results["pe_only"].append(compute_run_metrics(exp.run_pe_only()))
+        results["pt_only"].append(compute_run_metrics(exp.run_pt_only()))
+        results["adaptive"].append(compute_run_metrics(exp.run_adaptive()))
+        if progress_callback:
+            progress_callback(i + 1, len(seeds))
+    return results
+
+
+def run_adaptation_sweep(nodes: int, duration: float, time_step: float, scenario: str,
+                          seeds: List[int], levels: Optional[List[str]] = None,
+                          progress_callback=None) -> dict:
+    """Sprint 14 Change 3: runs the full PSM-Adaptive method (Method D)
+    at each adaptation_level (Mild/Moderate/Aggressive resource scaling,
+    config/resource_profiles.py) across multiple seeds, to trace the
+    resource-reduction-vs-perceptual-violation-rate trade-off curve.
+    Returns raw per-seed metrics for each level."""
+    levels = levels or ADAPTATION_LEVEL_OPTIONS
+    results = {}
+    total = len(levels) * len(seeds)
+    done = 0
+    for level in levels:
+        level_metrics = []
+        for seed in seeds:
+            exp = ControlledExperiment(
+                seed=seed, nodes=nodes, duration=duration, time_step=time_step,
+                scenario=scenario, adaptation_level=level,
+            )
+            level_metrics.append(compute_run_metrics(exp.run_adaptive()))
+            done += 1
+            if progress_callback:
+                progress_callback(done, total)
+        results[level] = level_metrics
+    return results
+
+
+def run_hysteresis_ablation(nodes: int, duration: float, time_step: float, scenario: str,
+                             seeds: List[int], baseline_policy: str = DEFAULT_UNIFORM_POLICY,
+                             progress_callback=None) -> dict:
+    """Sprint 14 Change 5: runs the full PSM-Adaptive method both with
+    hysteresis (Method D, the frozen default) and without hysteresis
+    (Method C, "PT-only / non-stateful") across multiple seeds, holding
+    every other input identical, to compare state transitions, resource
+    reallocations, synchronization messages, energy, and perceptual
+    violation rate with vs without hysteresis/dwell-time persistence."""
+    results = {"without_hysteresis": [], "with_hysteresis": []}
+    for i, seed in enumerate(seeds):
+        exp = ControlledExperiment(
+            seed=seed, nodes=nodes, duration=duration, time_step=time_step,
+            scenario=scenario, baseline_policy=baseline_policy,
+        )
+        results["without_hysteresis"].append(compute_run_metrics(exp.run_pt_only()))
+        results["with_hysteresis"].append(compute_run_metrics(exp.run_adaptive()))
+        if progress_callback:
+            progress_callback(i + 1, len(seeds))
+    return results
