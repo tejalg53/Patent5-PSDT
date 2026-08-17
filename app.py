@@ -21,8 +21,8 @@ architecture_page = st.Page("pages/architecture.py", title="Patent Architecture"
 simulation_page = st.Page("pages/simulation.py", title="Simulation", icon="🧠")
 analytics_page = st.Page("pages/analytics.py", title="Analytics", icon="📊")
 comparison_page = st.Page("pages/comparison.py", title="Comparison", icon="⚖")
+ablation_studies_page = st.Page("pages/ablation_studies.py", title="Ablation Studies", icon="🧪")
 final_validation_page = st.Page("pages/final_validation.py", title="Final Validation", icon="✅")
-
 
 pages = [
     home_page,
@@ -30,6 +30,7 @@ pages = [
     simulation_page,
     analytics_page,
     comparison_page,
+    ablation_studies_page,
     final_validation_page,
 
 ]
