@@ -3,19 +3,19 @@ Sprint 4 - Central Synchronization Coordinator.
 Sprint 5 - adds the DTCE pass (Dynamic Perceptual Threshold PTz(t)).
 Sprint 6 - adds the PEEE pass (Estimated Perceived Error PEz(t)).
 Sprint 7 - adds the PSME pass (Perceptual Synchronization Margin PSMz(t))
-           and seeds a rolling PT/PE/PSM history buffer per node for
-           Sprint 8+ (hysteresis/dwell-time, trend animation, graphs).
+    and seeds a rolling PT/PE/PSM history buffer per node for
+    Sprint 8+ (hysteresis/dwell-time, trend animation, graphs).
 Sprint 8 - adds the SCE pass (Synchronization Classification Engine):
-           classifies each node into RELAXED/NOMINAL/ELEVATED/IMMEDIATE
-           from its NPSM, with hysteresis and dwell-time persistence, and
-           maintains a rolling state_history buffer per node.
+    classifies each node into RELAXED/NOMINAL/ELEVATED/IMMEDIATE
+    from its NPSM, with hysteresis and dwell-time persistence, and
+    maintains a rolling state_history buffer per node.
 Sprint 9 - adds the ARAC pass (Adaptive Resource Allocation Controller):
-           turns each node's SCE-classified state into concrete adaptive
-           resource settings (sync interval, beacon interval, radio
-           wake-up interval, transmit power, trigger-timing offset),
-           replaces the placeholder baseline PRAP with a real one, and
-           estimates radio-active-time/energy consumption. This closes
-           the patent's control loop.
+    turns each node's SCE-classified state into concrete adaptive
+    resource settings (sync interval, beacon interval, radio
+    wake-up interval, transmit power, trigger-timing offset),
+    replaces the placeholder baseline PRAP with a real one, and
+    estimates radio-active-time/energy consumption. This closes
+    the patent's control loop.
 
 Responsible for:
 - registering wearable nodes into a registry indexed by Node ID and zone
@@ -31,6 +31,32 @@ Responsible for:
 The ARAC engine is represented here only as a named placeholder in the
 processing pipeline until Sprint 9. SCE (Sprint 8) and ARAC (Sprint 9)
 are now both fully implemented above.
+
+Sprint 12 Deliverable 8 - adds generic_control (ablation Method B,
+"Generic Adaptive"): when enabled, run_sce_pass classifies every node
+from one population-mean NPSM instead of each node's own per-zone NPSM.
+
+Sprint 14 (Patent strengthening, Changes 4-5) - adds three further
+optional overrides used together to run the controlled ablation study
+(Change 4: Methods B/C/D) and the hysteresis ablation (Change 5):
+
+- hysteresis_enabled (default True): when False, the internal SCE
+  instance is constructed with hysteresis_margin=0.0 and
+  persistence_cycles=1, i.e. state transitions react immediately to
+  every NPSM change with no dwell-time persistence and no boundary
+  margin. This reproduces "without hysteresis" behavior for Change 5.
+- pe_only_control (default False): ablation Method C, an "error-only,
+  non-stateful" arm that classifies each node from its raw Estimated
+  Perceived Error alone, normalized against PE_ONLY_REFERENCE_MS,
+  ignoring the personalized Dynamic Perceptual Threshold entirely.
+- adaptation_level (default None -> "Mild"): forwarded to the internal
+  ARAC instance to scale RELAXED/NOMINAL resource intervals for the
+  Change 3 resource-reduction-vs-violation-rate trade-off curve.
+
+All three default to the values that reproduce the exact frozen
+Sprint 9/10/11/12 behavior unchanged. A running resource_reallocation_count
+is also maintained, incremented whenever run_arac_pass actually changes
+a previously-allocated node's resources (used by the Change 5 comparison).
 """
 
 import statistics
@@ -49,6 +75,7 @@ from config.resource_profiles import (
     ENERGY_COST_PER_ACTIVE_SECOND_BY_LEVEL,
     DEFAULT_TRANSMIT_POWER_LEVEL,
 )
+from config.state_boundaries import PE_ONLY_REFERENCE_MS
 
 PIPELINE_STAGES = [
     ("DTCE", ""),
@@ -70,7 +97,9 @@ class CommunicationLogEntry:
 class CentralSynchronizationCoordinator:
     """A single digital twin's coordinator instance."""
 
-    def __init__(self, seed=None, generic_control: bool = False):
+    def __init__(self, seed=None, generic_control: bool = False,
+                 hysteresis_enabled: bool = True, pe_only_control: bool = False,
+                 adaptation_level: str = None):
         # Sprint 12 Deliverable 8 (ablation Method B: "Generic Adaptive").
         # Default False reproduces the exact frozen Sprint 10/11 behavior
         # unchanged. When True, run_sce_pass() classifies every node using
@@ -79,6 +108,12 @@ class CentralSynchronizationCoordinator:
         # longer body-zone-differentiated. PT/PE/PSM are still computed and
         # stored per-zone for diagnostics either way.
         self.generic_control = generic_control
+
+        # Sprint 14 (Change 4/5 ablation overrides). See module docstring.
+        self.hysteresis_enabled = hysteresis_enabled
+        self.pe_only_control = pe_only_control
+        self.adaptation_level = adaptation_level
+
         self.registry: Dict[str, object] = {}
         self.zone_index: Dict[str, List[str]] = {}
         self.status_repository: Dict[str, PSSP] = {}
@@ -104,9 +139,22 @@ class CentralSynchronizationCoordinator:
         }
         self.psme = PerceptualSynchronizationMarginEngine()
         self.psme_audit: Dict[str, PSMResult] = {}
-        self.sce = SynchronizationClassificationEngine()
+
+        # Sprint 14 Change 5: hysteresis_enabled=False disables hysteresis
+        # margin and dwell-time persistence entirely (immediate reaction).
+        # Default (True) constructs the SCE with no overrides, which is
+        # byte-identical to the original frozen Sprint 8 behavior.
+        if self.hysteresis_enabled:
+            self.sce = SynchronizationClassificationEngine()
+        else:
+            self.sce = SynchronizationClassificationEngine(
+                hysteresis_margin=0.0, persistence_cycles=1
+            )
         self.sce_audit: Dict[str, SCEResult] = {}
-        self.arac = AdaptiveResourceAllocationController()
+
+        # Sprint 14 Change 3: adaptation_level=None reproduces the exact
+        # frozen Sprint 9 ARAC behavior (scale 1.0 / "Mild").
+        self.arac = AdaptiveResourceAllocationController(adaptation_level=self.adaptation_level)
         self.arac_audit: Dict[str, ARACResult] = {}
         self._last_timestamp = 0.0
 
@@ -115,6 +163,12 @@ class CentralSynchronizationCoordinator:
         self.valid_packets = 0
         self.rejected_packets = 0
         self.prap_generated = 0
+
+        # Sprint 14 Change 5: counts actual resource reallocations (i.e.
+        # cycles where an already-adaptive node's allocated resources
+        # changed from their previous values), used to compare "with
+        # hysteresis" vs "without hysteresis" churn.
+        self.resource_reallocation_count = 0
 
         self._seen_packet_ids = set()
         self._packet_counter = 0
@@ -369,18 +423,46 @@ class CentralSynchronizationCoordinator:
         to the communication log; that node's classification fields are
         left untouched rather than reset to fabricated values. Returns
         the sce_audit dict (node_id -> SCEResult).
+
+        Sprint 12 Deliverable 8 (ablation Method B): when
+        self.generic_control is True, every node is classified from one
+        population-mean NPSM instead of its own per-zone NPSM.
+
+        Sprint 14 Change 4 (ablation Method C, "error-only / non-
+        stateful"): when self.pe_only_control is True, classification
+        ignores NPSM (and therefore the personalized Dynamic Perceptual
+        Threshold) entirely, and instead uses the node's raw Estimated
+        Perceived Error normalized against the fixed population-wide
+        PE_ONLY_REFERENCE_MS reference. generic_control and
+        pe_only_control are independent flags; if both are set, the
+        pe_only-derived per-node ratio is averaged across the
+        population the same way generic_control averages NPSM.
         """
         generic_npsm = None
         if self.generic_control:
-            valid_npsm = [n.normalized_psm for n in self.registry.values() if n.normalized_psm is not None]
-            if valid_npsm:
-                generic_npsm = statistics.fmean(valid_npsm)
+            if self.pe_only_control:
+                valid_vals = [
+                    n.perceived_error / PE_ONLY_REFERENCE_MS
+                    for n in self.registry.values()
+                    if n.perceived_error is not None
+                ]
+            else:
+                valid_vals = [n.normalized_psm for n in self.registry.values() if n.normalized_psm is not None]
+            if valid_vals:
+                generic_npsm = statistics.fmean(valid_vals)
 
         for node_id, node in self.registry.items():
-            if node.normalized_psm is None:
-                continue
+            if self.pe_only_control:
+                if node.perceived_error is None:
+                    continue
+                npsm_for_classification = generic_npsm if self.generic_control else (
+                    node.perceived_error / PE_ONLY_REFERENCE_MS
+                )
+            else:
+                if node.normalized_psm is None:
+                    continue
+                npsm_for_classification = generic_npsm if self.generic_control else node.normalized_psm
 
-            npsm_for_classification = generic_npsm if self.generic_control else node.normalized_psm
             if npsm_for_classification is None:
                 continue
 
@@ -437,6 +519,11 @@ class CentralSynchronizationCoordinator:
         resources (or documented NOMINAL defaults) are retained and the
         event is logged to the communication log. Returns the arac_audit
         dict (node_id -> ARACResult).
+
+        Sprint 14 Change 5: increments self.resource_reallocation_count
+        whenever an already-adaptive node's newly allocated resources
+        differ from its previous ones, giving a running count of actual
+        resource churn for the with/without-hysteresis comparison.
         """
         for node_id, node in self.registry.items():
             if node.sync_state == "Unclassified":
@@ -475,6 +562,14 @@ class CentralSynchronizationCoordinator:
                         packet_id=None,
                     )
                 )
+
+            if previous_resources is not None and (
+                previous_resources["sync_interval_ms"] != result.sync_interval_ms
+                or previous_resources["beacon_interval_ms"] != result.beacon_interval_ms
+                or previous_resources["radio_wakeup_interval_ms"] != result.radio_wakeup_interval_ms
+                or previous_resources["transmit_power_level"] != result.transmit_power_level
+            ):
+                self.resource_reallocation_count += 1
 
             node.allocated_sync_interval_ms = result.sync_interval_ms
             node.allocated_beacon_interval_ms = result.beacon_interval_ms
