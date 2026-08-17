@@ -8,6 +8,12 @@ run's history/status: this module never runs a simulation itself and
 never recomputes PT/PE/PSM/state (Sprint 5-9's job) or resource
 allocation (ARAC, Sprint 9). It only aggregates and compares what the
 engine already produced, per Sprint 11 Deliverables 5, 6, 20 and 26.
+
+Sprint 14 (Patent strengthening, Change 5) adds a resource_reallocations
+field, read directly from the Coordinator's own running
+resource_reallocation_count (core/coordinator.py), so the hysteresis
+ablation (core/experiment_engine.py's run_hysteresis_ablation()) can
+compare actual resource-allocation churn with vs without hysteresis.
 """
 
 import math
@@ -115,6 +121,12 @@ def compute_run_metrics(engine) -> dict:
         "negative_psm_frequency_pct": violation_rate_pct,
         "state_transitions": status["state_transitions"],
         "state_counts": status["state_counts"],
+        # Sprint 14 Change 5: running count of actual resource
+        # reallocations maintained by the Coordinator, used to compare
+        # resource-allocation churn with vs without hysteresis.
+        "resource_reallocations": getattr(
+            engine.coordinator, "resource_reallocation_count", None
+        ),
         "beacon_count_estimated": beacon_count_est,
         "pssp_count": engine.coordinator.get_packet_counts()["generated"],
         "prap_count": engine.coordinator.prap_generated,
@@ -202,6 +214,15 @@ def compare_runs(baseline: dict, proposed: dict) -> dict:
         },
         "state_transitions": {
             "baseline": baseline["state_transitions"], "proposed": proposed["state_transitions"],
+        },
+        "resource_reallocations": {
+            "baseline": baseline.get("resource_reallocations"), "proposed": proposed.get("resource_reallocations"),
+            "difference": (
+                proposed["resource_reallocations"] - baseline["resource_reallocations"]
+                if baseline.get("resource_reallocations") is not None
+                and proposed.get("resource_reallocations") is not None
+                else None
+            ),
         },
         "mean_sync_interval_ms": {
             "baseline": baseline["mean_sync_interval_ms"], "proposed": proposed["mean_sync_interval_ms"],
