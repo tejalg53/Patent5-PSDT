@@ -350,3 +350,5 @@ def run_hysteresis_ablation(nodes: int, duration: float, time_step: float, scena
         if progress_callback:
             progress_callback(i + 1, len(seeds))
     return results
+
+# Sprint 14 redeploy touch
